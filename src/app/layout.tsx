@@ -33,13 +33,15 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: "Bertona Seguros", description },
 };
 
-export const viewport: Viewport = { themeColor: "#0a1b33", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = { themeColor: "#0d1e3a", width: "device-width", initialScale: 1 };
 
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": ["InsuranceAgency", "LocalBusiness"],
   name: EMPRESA.nombre,
   url: SITE_URL,
+  logo: `${SITE_URL}/brand/logo.png`,
+  image: `${SITE_URL}/brand/logo.png`,
   telephone: EMPRESA.telefonoTel,
   email: EMPRESA.email,
   description,

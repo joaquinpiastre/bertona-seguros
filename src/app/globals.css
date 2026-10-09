@@ -1,21 +1,20 @@
 @import "tailwindcss";
 
 /* ─────────── TOKENS ───────────
-   Paleta provisoria: azul marino institucional + dorado discreto.
-   TODO: reemplazar por los colores del logo de /public/brand. Se cambia acá, en un solo lugar. */
+   Paleta tomada del logo (/public/brand): azul acero + bronce. Se cambia acá, en un solo lugar. */
 :root {
-  --brand-50: #f3f6fa;
-  --brand-100: #dde6f1;
-  --brand-200: #b7c8de;
-  --brand-500: #2d63a4;
-  --brand-600: #1f4a82;
-  --brand-700: #173a68;
-  --brand-800: #10294b;
-  --brand-900: #0a1b33;
-  --accent-300: #e4cfa3;
-  --accent-400: #d3b983;
-  --accent-500: #b8935a;
-  --accent-600: #8a6a35;
+  --brand-50: #f2f6fb;
+  --brand-100: #dbe5f1;
+  --brand-200: #b4c8e0;
+  --brand-500: #3f73b0;
+  --brand-600: #2c5a96;
+  --brand-700: #244779;
+  --brand-800: #17305a;
+  --brand-900: #0d1e3a;
+  --accent-300: #dccbA6;
+  --accent-400: #bfa97f;
+  --accent-500: #a08a5f;
+  --accent-600: #77643f;
   --surface: #ffffff;
   --surface-soft: #f6f7f9;
   --ink: #131c2b;
