@@ -1,4 +1,3 @@
-import { Aseguradoras } from "@/components/Aseguradoras";
 import { Contacto } from "@/components/Contacto";
 import { Faq } from "@/components/Faq";
 import { Footer } from "@/components/Footer";
@@ -21,7 +20,6 @@ export default function Home() {
         <Pilares />
         <Pasos />
         <Nosotros />
-        <Aseguradoras />
         <Resenas />
         <Faq />
         <Contacto />

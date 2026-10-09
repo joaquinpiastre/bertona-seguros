@@ -56,36 +56,10 @@ export const MAPS_LINK = `https://www.google.com/maps/search/?api=1&query=${enco
 export const CIFRAS: { valor: string; etiqueta: string }[] | null = null;
 // Ejemplo: [{ valor: "+20", etiqueta: "años de trayectoria" }, ...]
 
-// TODO: nombres reales de las aseguradoras. Hoy se muestran como logos placeholder neutros.
-export const ASEGURADORAS: string[] = [
-  "Aseguradora 1",
-  "Aseguradora 2",
-  "Aseguradora 3",
-  "Aseguradora 4",
-  "Aseguradora 5",
-  "Aseguradora 6",
-];
-
-// TODO: reemplazar por reseñas reales de Google (con autorización).
-export const TESTIMONIOS = [
-  {
-    nombre: "[Nombre del cliente]",
-    detalle: "Seguro de auto",
-    texto:
-      "Texto de ejemplo editable: me asesoraron con claridad y me acompañaron en todo el trámite del siniestro.",
-  },
-  {
-    nombre: "[Nombre del cliente]",
-    detalle: "Seguro de hogar",
-    texto:
-      "Texto de ejemplo editable: respuesta rápida por WhatsApp y una cobertura armada a mi medida.",
-  },
-  {
-    nombre: "[Nombre del cliente]",
-    detalle: "Seguro de comercio",
-    texto:
-      "Texto de ejemplo editable: trato cercano y profesional, siempre disponibles cuando los necesité.",
-  },
+// TODO: pegar acá reseñas REALES de Google (texto textual, sin nombre del cliente).
+// Mientras esté vacío, la sección solo muestra la calificación y el link a Google.
+export const RESENAS_GOOGLE: { texto: string; estrellas: number }[] = [
+  // { texto: "Texto textual de la reseña", estrellas: 5 },
 ];
 
 // TODO: confirmar ramos exactos con el cliente.
