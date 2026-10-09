@@ -1,4 +1,5 @@
 import { DIRECCION_COMPLETA, EMPRESA, MATRICULA_SSN } from "@/config/empresa";
+import { CREDITOS } from "@/config/imagenes";
 import { FacebookIcon, InstagramIcon } from "./Icons";
 import { Logo } from "./Logo";
 
@@ -20,8 +21,8 @@ export function Footer() {
           <div>
             <p className="text-sm font-bold text-white">Seguinos</p>
             <div className="mt-3 flex gap-3">
-              <a href={EMPRESA.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="grid h-11 w-11 place-items-center rounded-full bg-white/10 transition hover:bg-accent-500 hover:text-brand-900"><FacebookIcon className="h-5 w-5" /></a>
-              <a href={EMPRESA.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="grid h-11 w-11 place-items-center rounded-full bg-white/10 transition hover:bg-accent-500 hover:text-brand-900"><InstagramIcon className="h-5 w-5" /></a>
+              <a href={EMPRESA.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="grid h-11 w-11 place-items-center border border-white/25 transition hover:border-accent-400 hover:text-accent-300"><FacebookIcon className="h-5 w-5" /></a>
+              <a href={EMPRESA.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="grid h-11 w-11 place-items-center border border-white/25 transition hover:border-accent-400 hover:text-accent-300"><InstagramIcon className="h-5 w-5" /></a>
             </div>
           </div>
         </div>
@@ -33,6 +34,7 @@ export function Footer() {
             Las coberturas, condiciones y primas dependen de cada aseguradora. Los contenidos de este sitio son informativos y no constituyen una oferta vinculante.
             La Superintendencia de Seguros de la Nación es el organismo de control: www.argentina.gob.ar/ssn.
           </p>
+          <p>Créditos de imágenes: {CREDITOS.join(" ")}</p>
           <p>© {new Date().getFullYear()} Bertona Seguros. Todos los derechos reservados.</p>
         </div>
       </div>

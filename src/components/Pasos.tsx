@@ -10,17 +10,17 @@ const PASOS = [
 
 export function Pasos() {
   return (
-    <section className="bg-soft py-20 sm:py-24">
+    <section className="bg-brand-900 py-20 text-white sm:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <SectionTitle eyebrow="Cómo funciona" title="Asegurarte es simple" />
-        <ol className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <SectionTitle light eyebrow="Cómo funciona" title="Asegurarte es simple" />
+        <ol className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
           {PASOS.map((p, i) => (
             <li key={p.t}>
-              <Reveal delay={i * 90} className="h-full">
-                <div className="h-full rounded-[var(--radius)] bg-white p-7 shadow-soft">
-                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-accent-400 font-display text-xl font-bold text-brand-900">{i + 1}</span>
-                  <h3 className="mt-5 text-lg font-bold text-brand-900">{p.t}</h3>
-                  <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-soft">{p.d}</p>
+              <Reveal delay={i * 80}>
+                <div className="border-t-2 border-accent-500 pt-5">
+                  <span className="font-display text-4xl font-semibold text-accent-300">0{i + 1}</span>
+                  <h3 className="mt-3 text-lg text-white">{p.t}</h3>
+                  <p className="mt-2 text-[0.95rem] leading-relaxed text-brand-100">{p.d}</p>
                 </div>
               </Reveal>
             </li>

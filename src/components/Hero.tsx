@@ -1,43 +1,46 @@
+import Image from "next/image";
 import { EMPRESA, waLink } from "@/config/empresa";
+import { IMG } from "@/config/imagenes";
 import { ArrowIcon, StarIcon, WhatsAppIcon } from "./Icons";
-import { HeroScene } from "./Illustrations";
 
 export function Hero() {
   return (
-    <section id="inicio" className="relative overflow-hidden bg-gradient-to-b from-brand-50 to-white pt-24 sm:pt-28">
-      <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 pb-16 sm:px-6 lg:grid-cols-2 lg:pb-24">
-        <div>
-          <p className="mb-5 inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1.5 text-sm font-semibold text-brand-700 shadow-soft">
-            <span className="flex text-accent-500">
-              {[1, 1, 1, 1, 0.5].map((f, i) => <StarIcon key={i} fill={f} className="h-4 w-4" />)}
-            </span>
-            {String(EMPRESA.reputacion.estrellas).replace(".", ",")} en Google · San Rafael, Mendoza
+    <section id="inicio" className="relative isolate overflow-hidden bg-brand-900 pt-[72px] lg:pt-[108px]">
+      <Image src={IMG.hero.src} alt={IMG.hero.alt} fill priority sizes="100vw" className="-z-20 object-cover object-[60%_center]" />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-r from-brand-900 via-brand-900/85 to-brand-900/30 max-lg:bg-brand-900/65" aria-hidden />
+
+      <div className="mx-auto max-w-6xl px-4 pb-16 pt-16 sm:px-6 sm:pb-24 sm:pt-24 lg:pb-32 lg:pt-28">
+        <div className="max-w-2xl">
+          <p className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.22em] text-accent-300">
+            <span className="h-px w-8 bg-accent-400" aria-hidden /> Productor asesor de seguros · San Rafael, Mendoza
           </p>
-          <h1 className="text-4xl font-bold leading-[1.08] text-brand-900 sm:text-5xl lg:text-6xl">
-            Un respaldo real y cercano, <span className="text-brand-500">cuando más lo necesitás</span>
+          <h1 className="mt-6 text-4xl leading-[1.12] text-white sm:text-5xl lg:text-6xl">
+            Un respaldo real y cercano, cuando más lo necesitás
           </h1>
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink-soft">
-            No se trata solo de contratar un seguro. Te asesoramos de forma personalizada y te acompañamos desde la cotización hasta el siniestro: nunca estás solo.
+          <p className="mt-6 max-w-xl text-lg leading-relaxed text-brand-100">
+            No se trata solo de contratar un seguro. Te asesoramos de forma personalizada y te acompañamos desde la cotización hasta el siniestro.
           </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <a href={waLink("Hola! Quiero cotizar un seguro.")} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-accent-500 px-7 py-4 text-base font-bold text-brand-900 shadow-lift transition hover:-translate-y-0.5 hover:bg-accent-400">
+              className="inline-flex items-center justify-center gap-2 bg-accent-500 px-7 py-4 text-base font-semibold text-brand-900 transition hover:bg-accent-400">
               <WhatsAppIcon className="h-5 w-5" /> Cotizar por WhatsApp
             </a>
-            <a href="#seguros" className="group inline-flex items-center justify-center gap-2 rounded-full border-2 border-brand-200 bg-white px-7 py-4 text-base font-bold text-brand-700 transition hover:border-brand-500 hover:text-brand-900">
+            <a href="#seguros" className="group inline-flex items-center justify-center gap-2 border border-white/60 px-7 py-4 text-base font-semibold text-white transition hover:border-white hover:bg-white/10">
               Ver seguros <ArrowIcon className="h-5 w-5 transition group-hover:translate-x-1" />
             </a>
           </div>
         </div>
-        <div className="relative">
-          <div className="aspect-[4/3] overflow-hidden rounded-[2rem] shadow-lift ring-1 ring-brand-100">
-            <HeroScene className="h-full w-full" />
-          </div>
-          <div className="absolute -bottom-5 left-4 rounded-2xl bg-white px-5 py-3 shadow-lift sm:-left-5">
-            <p className="font-display text-lg font-bold text-brand-900">Asesoramiento a medida</p>
-            <p className="text-sm text-ink-soft">Personas, familias y comercios</p>
-          </div>
-        </div>
+      </div>
+
+      <div className="border-t border-white/15 bg-brand-900/70 backdrop-blur-sm">
+        <ul className="mx-auto grid max-w-6xl gap-4 px-4 py-5 text-sm text-brand-100 sm:grid-cols-3 sm:px-6">
+          <li className="flex items-center gap-3">
+            <span className="flex text-accent-400">{[1, 1, 1, 1, 0.5].map((f, i) => <StarIcon key={i} fill={f} className="h-4 w-4" />)}</span>
+            <span><strong className="text-white">{String(EMPRESA.reputacion.estrellas).replace(".", ",")}</strong> en Google</span>
+          </li>
+          <li><strong className="text-white">Asesoramiento personalizado</strong> para personas y empresas</li>
+          <li><strong className="text-white">Acompañamiento</strong> ante cada siniestro</li>
+        </ul>
       </div>
     </section>
   );

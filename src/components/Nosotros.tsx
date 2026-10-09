@@ -1,37 +1,47 @@
+import Image from "next/image";
 import { CIFRAS, NOSOTROS } from "@/config/empresa";
-import { LandscapePanel, TeamScene } from "./Illustrations";
+import { IMG } from "@/config/imagenes";
 import { Reveal } from "./Reveal";
 
 const PAISAJES = [
-  { v: "bodega", t: "Viñedos y bodegas" },
-  { v: "canon", t: "Cañón del Atuel" },
-  { v: "cordillera", t: "Cordillera de los Andes" },
-] as const;
+  { img: IMG.hero, t: "Viñedos de Mendoza" },
+  { img: IMG.atuel, t: "Cañón del Atuel" },
+  { img: IMG.valleGrande, t: "Embalse Valle Grande" },
+];
 
 export function Nosotros() {
   return (
-    <section id="nosotros" className="bg-white py-20 sm:py-24">
+    <section id="nosotros" className="bg-white py-20 sm:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="grid items-center gap-12 lg:grid-cols-2">
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
           <Reveal>
-            <TeamScene className="w-full rounded-[2rem] shadow-lift" />
+            <div className="relative">
+              <div className="relative aspect-[4/3] overflow-hidden">
+                <Image src={IMG.nosotros.src} alt={IMG.nosotros.alt} fill sizes="(min-width:1024px) 540px, 100vw" className="object-cover" />
+              </div>
+              <div className="absolute -bottom-4 -right-0 hidden h-24 w-24 border-b-4 border-r-4 border-accent-500 sm:block" aria-hidden />
+            </div>
           </Reveal>
           <Reveal delay={100}>
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-accent-600">Quiénes somos</p>
-            <h2 className="mt-3 text-3xl font-bold text-brand-900 sm:text-4xl">{NOSOTROS.titulo}</h2>
+            <p className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.22em] text-accent-600">
+              <span className="h-px w-8 bg-accent-500" aria-hidden /> Quiénes somos
+            </p>
+            <h2 className="mt-4 text-3xl leading-tight text-brand-900 sm:text-4xl">{NOSOTROS.titulo}</h2>
             {NOSOTROS.parrafos.map((t) => (
               <p key={t} className="mt-4 text-lg leading-relaxed text-ink-soft">{t}</p>
             ))}
-            <ul className="mt-6 flex flex-wrap gap-2">
+            <ul className="mt-7 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-line pt-6">
               {NOSOTROS.valores.map((v) => (
-                <li key={v} className="rounded-full bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700">{v}</li>
+                <li key={v} className="flex items-center gap-3 font-medium text-brand-900">
+                  <span className="h-2 w-2 bg-accent-500" aria-hidden />{v}
+                </li>
               ))}
             </ul>
             {CIFRAS && (
-              <dl className="mt-8 grid grid-cols-3 gap-4">
+              <dl className="mt-8 grid grid-cols-3 gap-4 border-t border-line pt-6">
                 {CIFRAS.map((c) => (
                   <div key={c.etiqueta}>
-                    <dt className="font-display text-3xl font-bold text-brand-700">{c.valor}</dt>
+                    <dt className="font-display text-3xl font-semibold text-brand-700">{c.valor}</dt>
                     <dd className="text-sm text-ink-soft">{c.etiqueta}</dd>
                   </div>
                 ))}
@@ -40,17 +50,18 @@ export function Nosotros() {
           </Reveal>
         </div>
 
-        <div className="mt-16 grid gap-4 sm:grid-cols-3">
+        <div className="mt-20 grid gap-3 sm:grid-cols-3">
           {PAISAJES.map((p, i) => (
-            <Reveal key={p.v} delay={i * 100}>
-              <div className="overflow-hidden rounded-[var(--radius)] shadow-soft">
-                <LandscapePanel variant={p.v} className="aspect-[4/3] w-full transition duration-500 hover:scale-105" />
-              </div>
-              <p className="mt-3 text-center text-sm font-semibold text-ink-soft">{p.t}</p>
+            <Reveal key={p.t} delay={i * 80}>
+              <figure className="group relative aspect-[4/3] overflow-hidden">
+                <Image src={p.img.src} alt={p.img.alt} fill sizes="(min-width:640px) 360px, 100vw" className="object-cover object-[center_75%] transition duration-700 group-hover:scale-[1.04]" />
+                <div className="absolute inset-0 bg-gradient-to-t from-brand-900/80 via-transparent to-transparent" aria-hidden />
+                <figcaption className="absolute bottom-0 p-5 font-display text-lg text-white">{p.t}</figcaption>
+              </figure>
             </Reveal>
           ))}
         </div>
-        <p className="mt-6 text-center font-display text-xl font-semibold text-brand-800">Orgullosamente de San Rafael, Mendoza.</p>
+        <p className="mt-6 text-center font-display text-xl text-brand-800">Orgullosamente de San Rafael, Mendoza.</p>
       </div>
     </section>
   );

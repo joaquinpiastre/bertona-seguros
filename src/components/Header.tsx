@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { waLink } from "@/config/empresa";
-import { CloseIcon, MenuIcon, WhatsAppIcon } from "./Icons";
+import { DIRECCION_COMPLETA, EMPRESA, waLink } from "@/config/empresa";
+import { CloseIcon, MailIcon, MenuIcon, PhoneIcon, PinIcon, WhatsAppIcon } from "./Icons";
 import { Logo } from "./Logo";
 
 const LINKS = [
@@ -23,40 +23,51 @@ export function Header() {
   }, []);
 
   return (
-    <header className={`fixed inset-x-0 top-0 z-50 transition-all ${scrolled || open ? "bg-white/95 shadow-soft backdrop-blur" : "bg-white/70 backdrop-blur-sm"}`}>
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <a href="#inicio" aria-label="Bertona Seguros, ir al inicio"><Logo /></a>
-        <nav aria-label="Principal" className="hidden items-center gap-1 lg:flex">
-          {LINKS.map((l) => (
-            <a key={l.href} href={l.href} className="rounded-full px-3.5 py-2 text-sm font-semibold text-ink-soft transition hover:bg-brand-50 hover:text-brand-700">
-              {l.label}
-            </a>
-          ))}
-        </nav>
-        <div className="flex items-center gap-2">
-          <a href={waLink("Hola! Quiero cotizar un seguro.")} target="_blank" rel="noopener noreferrer"
-            className="hidden items-center gap-2 rounded-full bg-accent-500 px-5 py-2.5 text-sm font-bold text-brand-900 shadow-soft transition hover:-translate-y-0.5 hover:bg-accent-400 sm:inline-flex">
-            <WhatsAppIcon className="h-4 w-4" /> Cotizá ahora
-          </a>
-          <button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="menu-movil" aria-label={open ? "Cerrar menú" : "Abrir menú"}
-            className="grid h-11 w-11 place-items-center rounded-full text-brand-800 hover:bg-brand-50 lg:hidden">
-            {open ? <CloseIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
-          </button>
+    <header className="fixed inset-x-0 top-0 z-50">
+      <div className="hidden bg-brand-900 text-xs text-brand-100 lg:block">
+        <div className="mx-auto flex h-9 max-w-6xl items-center justify-between px-6">
+          <span className="flex items-center gap-2"><PinIcon className="h-3.5 w-3.5 text-accent-400" />{DIRECCION_COMPLETA}</span>
+          <span className="flex items-center gap-6">
+            <a href={`tel:${EMPRESA.telefonoTel}`} className="flex items-center gap-2 hover:text-white"><PhoneIcon className="h-3.5 w-3.5 text-accent-400" />{EMPRESA.telefonoVisible}</a>
+            <a href={`mailto:${EMPRESA.email}`} className="flex items-center gap-2 hover:text-white"><MailIcon className="h-3.5 w-3.5 text-accent-400" />{EMPRESA.email}</a>
+          </span>
         </div>
       </div>
-      {open && (
-        <nav id="menu-movil" aria-label="Móvil" className="border-t border-line bg-white px-4 pb-5 pt-2 lg:hidden">
-          {LINKS.map((l) => (
-            <a key={l.href} href={l.href} onClick={() => setOpen(false)} className="block rounded-xl px-3 py-3 text-base font-semibold text-brand-800 hover:bg-brand-50">
-              {l.label}
+      <div className={`border-b border-line bg-white transition-shadow ${scrolled || open ? "shadow-soft" : ""}`}>
+        <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-4 sm:px-6">
+          <a href="#inicio" aria-label="Bertona Seguros, ir al inicio"><Logo /></a>
+          <nav aria-label="Principal" className="hidden items-center gap-8 lg:flex">
+            {LINKS.map((l) => (
+              <a key={l.href} href={l.href} className="border-b-2 border-transparent py-2 text-sm font-medium text-ink transition hover:border-accent-500 hover:text-brand-700">
+                {l.label}
+              </a>
+            ))}
+          </nav>
+          <div className="flex items-center gap-2">
+            <a href={waLink("Hola! Quiero cotizar un seguro.")} target="_blank" rel="noopener noreferrer"
+              className="hidden items-center gap-2 bg-brand-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 sm:inline-flex">
+              <WhatsAppIcon className="h-4 w-4 text-accent-300" /> Cotizá ahora
             </a>
-          ))}
-          <a href={waLink("Hola! Quiero cotizar un seguro.")} target="_blank" rel="noopener noreferrer"
-            className="mt-3 flex items-center justify-center gap-2 rounded-full bg-accent-500 px-5 py-3 font-bold text-brand-900">
-            <WhatsAppIcon className="h-5 w-5" /> Cotizá ahora
-          </a>
-        </nav>
-      )}
+            <button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="menu-movil" aria-label={open ? "Cerrar menú" : "Abrir menú"}
+              className="grid h-11 w-11 place-items-center text-brand-900 hover:bg-brand-50 lg:hidden">
+              {open ? <CloseIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
+            </button>
+          </div>
+        </div>
+        {open && (
+          <nav id="menu-movil" aria-label="Móvil" className="border-t border-line bg-white px-4 pb-5 pt-2 lg:hidden">
+            {LINKS.map((l) => (
+              <a key={l.href} href={l.href} onClick={() => setOpen(false)} className="block border-b border-line px-1 py-3.5 text-base font-medium text-brand-900">
+                {l.label}
+              </a>
+            ))}
+            <a href={waLink("Hola! Quiero cotizar un seguro.")} target="_blank" rel="noopener noreferrer"
+              className="mt-4 flex items-center justify-center gap-2 bg-brand-900 px-5 py-3.5 font-semibold text-white">
+              <WhatsAppIcon className="h-5 w-5 text-accent-300" /> Cotizá ahora
+            </a>
+          </nav>
+        )}
+      </div>
     </header>
   );
 }

@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
+import { Inter, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 import { DIRECCION_COMPLETA, EMPRESA, SITE_URL } from "@/config/empresa";
 
-const display = Fraunces({ subsets: ["latin"], variable: "--f-display", display: "swap" });
-const sans = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--f-sans", display: "swap" });
+const display = Source_Serif_4({ subsets: ["latin"], variable: "--f-display", display: "swap" });
+const sans = Inter({ subsets: ["latin"], variable: "--f-sans", display: "swap" });
 
 const description =
   "Bertona Seguros, productor asesor de seguros en San Rafael, Mendoza. Cotizá seguros de auto, moto, hogar, comercio, vida, ART y más, con asesoramiento personalizado.";
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: "Bertona Seguros", description },
 };
 
-export const viewport: Viewport = { themeColor: "#091f42", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = { themeColor: "#0a1b33", width: "device-width", initialScale: 1 };
 
 const jsonLd = {
   "@context": "https://schema.org",

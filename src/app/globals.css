@@ -1,29 +1,29 @@
 @import "tailwindcss";
 
 /* ─────────── TOKENS ───────────
-   Paleta provisoria (azul profundo + acento cálido).
+   Paleta provisoria: azul marino institucional + dorado discreto.
    TODO: reemplazar por los colores del logo de /public/brand. Se cambia acá, en un solo lugar. */
 :root {
-  --brand-50: #eef4fc;
-  --brand-100: #d9e6f8;
-  --brand-200: #b3cdf0;
-  --brand-500: #2563b8;
-  --brand-600: #1b4f9c;
-  --brand-700: #143d7a;
-  --brand-800: #0e2d5c;
-  --brand-900: #091f42;
-  --accent-300: #ffd27a;
-  --accent-400: #ffb938;
-  --accent-500: #f59e0b;
-  --accent-600: #d97706;
+  --brand-50: #f3f6fa;
+  --brand-100: #dde6f1;
+  --brand-200: #b7c8de;
+  --brand-500: #2d63a4;
+  --brand-600: #1f4a82;
+  --brand-700: #173a68;
+  --brand-800: #10294b;
+  --brand-900: #0a1b33;
+  --accent-300: #e4cfa3;
+  --accent-400: #d3b983;
+  --accent-500: #b8935a;
+  --accent-600: #8a6a35;
   --surface: #ffffff;
-  --surface-soft: #f6f8fc;
-  --ink: #0f1b30;
-  --ink-soft: #4a5a75;
-  --line: #e3e9f3;
-  --radius: 1.25rem;
-  --shadow-soft: 0 10px 30px -12px rgb(9 31 66 / 0.18);
-  --shadow-lift: 0 22px 44px -16px rgb(9 31 66 / 0.28);
+  --surface-soft: #f6f7f9;
+  --ink: #131c2b;
+  --ink-soft: #4b586b;
+  --line: #dfe4eb;
+  --radius: 4px;
+  --shadow-soft: 0 1px 2px rgb(10 27 51 / 0.06), 0 4px 14px -6px rgb(10 27 51 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(10 27 51 / 0.06), 0 16px 32px -14px rgb(10 27 51 / 0.28);
 }
 
 @theme inline {
@@ -48,24 +48,19 @@
   --font-sans: var(--f-sans), system-ui, sans-serif;
 }
 
-html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
+html { scroll-behavior: smooth; scroll-padding-top: 6rem; }
 body { background: var(--surface); color: var(--ink); font-family: var(--f-sans), system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
-h1, h2, h3 { font-family: var(--f-display), Georgia, serif; letter-spacing: -0.01em; }
+h1, h2, h3 { font-family: var(--f-display), Georgia, serif; font-weight: 600; letter-spacing: -0.005em; }
 
-:focus-visible { outline: 3px solid var(--accent-500); outline-offset: 3px; border-radius: 6px; }
+:focus-visible { outline: 3px solid var(--accent-500); outline-offset: 3px; }
 
 .shadow-soft { box-shadow: var(--shadow-soft); }
 .shadow-lift { box-shadow: var(--shadow-lift); }
 
-/* Microanimaciones al hacer scroll */
-.reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); transition-delay: var(--d, 0ms); }
+/* Aparición sutil al hacer scroll */
+.reveal { opacity: 0; transform: translateY(12px); transition: opacity .6s ease, transform .6s ease; transition-delay: var(--d, 0ms); }
 .reveal.is-in { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .reveal { opacity: 1; transform: none; transition: none; }
 }
-@keyframes floaty { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
-.floaty { animation: floaty 6s ease-in-out infinite; }
-@keyframes drift { from { transform: translateX(0) } to { transform: translateX(-50%) } }
-.marquee { animation: drift 40s linear infinite; }
-@media (prefers-reduced-motion: reduce) { .floaty, .marquee { animation: none; } }
