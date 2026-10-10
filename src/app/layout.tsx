@@ -64,7 +64,7 @@ const jsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es-AR" className={`${display.variable} ${sans.variable}`}>
+    <html lang="es-AR" data-scroll-behavior="smooth" className={`${display.variable} ${sans.variable}`}>
       <body>
         {children}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />

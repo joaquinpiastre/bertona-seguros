@@ -40,8 +40,15 @@ export const HORARIOS = [
   { dias: "Sábados", horas: "[completar]" },
 ];
 
-// TODO: N° de matrícula SSN real del productor asesor.
-export const MATRICULA_SSN = "[completar]";
+// Matrícula y datos del productor: tomados del recibo oficial de la empresa.
+export const MATRICULA_SSN = "65257";
+export const PRODUCTOR = { nombre: "BERTONA LUIS ALEJANDRO", matricula: "65257" };
+export const TELEFONO_COBRANZA = "2604006753";
+export const SSN_TELEFONO = "0800-666-8400";
+
+// Texto legal del recibo (tomado del recibo vigente de la empresa). TODO: confirmar con el cliente.
+export const RECIBO_LEGAL =
+  'Articulo 40 de la referida ley 24.499, que entre las exigencias incluye llevar " el comprobante de seguro, en vigencia, que refiere el articulo 68, el cual podrá ser exhibido en formato papel impreso o digital a traves de dispositivos; La aplicación del pago puede demorar hasta 48hs en acreditarse en la cuenta. El pago incluye gastos de Gestion de Cobranza, Gestion de Siniestro y Asesoramiento Profesional el cual se aplica a la Póliza de acuerdo a lo establecido por resolución N° 429/2000 del Minis. de Economia de la Nación y Res N° 27.627 y las aclaratorias de la SSN.';
 
 // TODO: reemplazar por el enlace real de Google Maps / embed de la ficha de la empresa.
 export const MAPS_EMBED_URL = `https://www.google.com/maps?q=${encodeURIComponent(
