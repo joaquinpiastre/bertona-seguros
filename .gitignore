@@ -19,3 +19,5 @@ dev.log
 
 dist
 backend/dist
+
+*.log
