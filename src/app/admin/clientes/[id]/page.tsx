@@ -1,11 +1,11 @@
 import Link from "next/link";
+import { dato, type Row } from "@/lib/api";
 import { notFound } from "next/navigation";
 import { SubmitButton } from "@/components/panel/Cliente";
 import { Badge, Card, Field, Flash, LinkBtn, PageHead, SelectField, Tabla, Td, TextArea, Th } from "@/components/panel/ui";
 import {
   actualizarCliente, alternarCliente, alternarUsuario, crearAccesoCliente, crearContactoAdmin, eliminarContactoAdmin, restablecerPassword,
 } from "@/lib/actions/admin";
-import { q, q1 } from "@/lib/db";
 import { ESTADOS_POLIZA, METODOS, PARENTESCOS, fecha, money } from "@/lib/format";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; error?: string }> };
@@ -14,22 +14,10 @@ export default async function DetalleCliente({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
   const cid = Number(id);
-  const c = await q1("SELECT * FROM clientes WHERE id = $1", [cid]);
-  if (!c) notFound();
-  const [acceso, contactos, polizas, pagos, deuda] = await Promise.all([
-    q1("SELECT id, email, activo, debe_cambiar_password FROM usuarios WHERE cliente_id = $1 LIMIT 1", [cid]),
-    q("SELECT * FROM contactos_emergencia WHERE cliente_id = $1 ORDER BY id", [cid]),
-    q(
-      `SELECT p.id, p.ramo, p.compania, p.numero, p.dominio, p.riesgo, p.estado, p.vigencia_hasta::text AS hasta,
-              (SELECT COUNT(*)::int FROM documentos d WHERE d.poliza_id = p.id AND d.tipo IN ('poliza','certificado')) AS docs
-       FROM polizas p WHERE p.cliente_id = $1 ORDER BY p.id DESC`, [cid]),
-    q(
-      `SELECT pg.id, pg.recibo_nro, pg.fecha::text AS fecha, pg.importe::float8 AS importe, pg.metodo, pg.estado FROM pagos pg
-       WHERE pg.cliente_id = $1 ORDER BY pg.fecha DESC, pg.id DESC LIMIT 10`, [cid]),
-    q1(
-      `SELECT COALESCE(SUM(x.importe),0)::float8 AS t FROM cuotas x JOIN polizas p ON p.id = x.poliza_id
-       WHERE p.cliente_id = $1 AND x.estado = 'pendiente' AND x.vencimiento < CURRENT_DATE`, [cid]),
-  ]);
+  const { c, acceso, contactos, polizas, pagos, deuda } = await dato<{
+    c: Row; acceso: Row | null; contactos: Row[]; polizas: Row[]; pagos: Row[]; deuda: Row;
+  }>("clienteDetalle", { id: cid });
+
   const volver = `/admin/clientes/${cid}`;
 
   return (

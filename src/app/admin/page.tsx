@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { dato, type Row } from "@/lib/api";
 import { Badge, Card, Flash, LinkBtn, PageHead, Stat, Tabla, Td, Th } from "@/components/panel/ui";
-import { q, q1 } from "@/lib/db";
 import { METODOS, fecha, hoy, money, sumarDias } from "@/lib/format";
 
 type SP = Promise<{ ok?: string; error?: string }>;
@@ -8,32 +8,10 @@ type SP = Promise<{ ok?: string; error?: string }>;
 export default async function Resumen({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const h = hoy();
-  const mesIni = h.slice(0, 8) + "01";
-  const en7 = sumarDias(h, 7);
-  const en30 = sumarDias(h, 30);
-
-  const [mes, dia, venc, prox, polizas, porVencer, clientes, hoyMetodos, vencidas, proximas, ultimos] = await Promise.all([
-    q1("SELECT COALESCE(SUM(importe),0)::float8 AS t, COUNT(*)::int AS n FROM pagos WHERE estado='aplicado' AND fecha >= $1 AND fecha <= $2", [mesIni, h]),
-    q1("SELECT COALESCE(SUM(importe),0)::float8 AS t, COUNT(*)::int AS n FROM pagos WHERE estado='aplicado' AND fecha = $1", [h]),
-    q1("SELECT COALESCE(SUM(importe),0)::float8 AS t, COUNT(*)::int AS n FROM cuotas WHERE estado='pendiente' AND vencimiento < $1", [h]),
-    q1("SELECT COALESCE(SUM(importe),0)::float8 AS t, COUNT(*)::int AS n FROM cuotas WHERE estado='pendiente' AND vencimiento BETWEEN $1 AND $2", [h, en7]),
-    q1("SELECT COUNT(*)::int AS n FROM polizas WHERE estado = 'vigente'"),
-    q1("SELECT COUNT(*)::int AS n FROM polizas WHERE estado = 'vigente' AND vigencia_hasta BETWEEN $1 AND $2", [h, en30]),
-    q1("SELECT COUNT(*)::int AS n FROM clientes WHERE activo"),
-    q("SELECT metodo, SUM(importe)::float8 AS t FROM pagos WHERE estado='aplicado' AND fecha = $1 GROUP BY metodo ORDER BY t DESC", [h]),
-    q(
-      `SELECT c.id, c.numero, c.vencimiento::text AS venc, c.importe::float8 AS importe, p.id AS poliza_id, p.numero AS poliza, p.cuotas_cant, p.compania, p.dominio, cl.id AS cliente_id, cl.nombre AS cliente
-       FROM cuotas c JOIN polizas p ON p.id = c.poliza_id JOIN clientes cl ON cl.id = p.cliente_id
-       WHERE c.estado = 'pendiente' AND c.vencimiento < $1 ORDER BY c.vencimiento LIMIT 8`, [h]),
-    q(
-      `SELECT c.id, c.numero, c.vencimiento::text AS venc, c.importe::float8 AS importe, p.id AS poliza_id, p.numero AS poliza, p.cuotas_cant, p.compania, p.dominio, cl.id AS cliente_id, cl.nombre AS cliente
-       FROM cuotas c JOIN polizas p ON p.id = c.poliza_id JOIN clientes cl ON cl.id = p.cliente_id
-       WHERE c.estado = 'pendiente' AND c.vencimiento BETWEEN $1 AND $2 ORDER BY c.vencimiento LIMIT 8`, [h, en7]),
-    q(
-      `SELECT pg.id, pg.recibo_nro, pg.fecha::text AS fecha, pg.importe::float8 AS importe, pg.metodo, pg.estado, cl.id AS cliente_id, cl.nombre AS cliente, p.numero AS poliza
-       FROM pagos pg JOIN clientes cl ON cl.id = pg.cliente_id LEFT JOIN polizas p ON p.id = pg.poliza_id
-       ORDER BY pg.id DESC LIMIT 8`),
-  ]);
+  const { mes, dia, venc, prox, polizas, porVencer, clientes, hoyMetodos, vencidas, proximas, ultimos } = await dato<{
+    mes: Row; dia: Row; venc: Row; prox: Row; polizas: Row; porVencer: Row; clientes: Row;
+    hoyMetodos: Row[]; vencidas: Row[]; proximas: Row[]; ultimos: Row[];
+  }>("resumen");
 
   const filaCuota = (c: (typeof vencidas)[number], vencida: boolean) => (
     <tr key={c.id}>

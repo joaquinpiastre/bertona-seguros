@@ -1,0 +1,31 @@
+{
+  "name": "bertona-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "esbuild src/server.ts --bundle --platform=node --format=esm --target=node20 --packages=external --outfile=dist/server.mjs",
+    "start": "node dist/server.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.4",
+    "bcryptjs": "^3.0.3",
+    "hono": "^4.13.13",
+    "jose": "^6.2.12",
+    "pdf-lib": "^1.17.1",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,31 +1,17 @@
 import Link from "next/link";
+import { dato, type Row } from "@/lib/api";
 import { Badge, Card, Flash, LinkBtn, btnGhost } from "@/components/panel/ui";
 import { EMPRESA, waLink } from "@/config/empresa";
 import { portalUsuario } from "@/lib/auth";
-import { q, q1 } from "@/lib/db";
 import { ESTADOS_POLIZA, fecha, hoy, money } from "@/lib/format";
 
 export default async function PortalInicio({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const sp = await searchParams;
   const u = await portalUsuario();
   const h = hoy();
-  const [c, polizas, cuotas, pagos, nContactos] = await Promise.all([
-    q1("SELECT nombre FROM clientes WHERE id = $1", [u.cliente_id]),
-    q(
-      `SELECT p.id, p.ramo, p.compania, p.numero, p.riesgo, p.dominio, p.estado, p.vigencia_hasta::text AS hasta,
-              (SELECT id FROM documentos d WHERE d.poliza_id = p.id AND d.tipo = 'poliza' ORDER BY id DESC LIMIT 1) AS doc_poliza,
-              (SELECT id FROM documentos d WHERE d.poliza_id = p.id AND d.tipo = 'certificado' ORDER BY id DESC LIMIT 1) AS doc_cert
-       FROM polizas p WHERE p.cliente_id = $1 AND p.estado IN ('vigente','en_tramite') ORDER BY p.id DESC`, [u.cliente_id]),
-    q(
-      `SELECT c.id, c.numero, c.vencimiento::text AS venc, c.importe::float8 AS importe, p.numero AS poliza, p.compania, p.cuotas_cant
-       FROM cuotas c JOIN polizas p ON p.id = c.poliza_id
-       WHERE p.cliente_id = $1 AND c.estado = 'pendiente' AND p.estado <> 'anulada' ORDER BY c.vencimiento LIMIT 10`, [u.cliente_id]),
-    q(
-      `SELECT pg.id, pg.recibo_nro, pg.fecha::text AS fecha, pg.importe::float8 AS importe, p.numero AS poliza
-       FROM pagos pg LEFT JOIN polizas p ON p.id = pg.poliza_id WHERE pg.cliente_id = $1 AND pg.estado = 'aplicado'
-       ORDER BY pg.fecha DESC, pg.id DESC LIMIT 3`, [u.cliente_id]),
-    q1("SELECT COUNT(*)::int AS n FROM contactos_emergencia WHERE cliente_id = $1", [u.cliente_id]),
-  ]);
+  const { c, polizas, cuotas, pagos, nContactos } = await dato<{
+    c: Row | null; polizas: Row[]; cuotas: Row[]; pagos: Row[]; nContactos: Row;
+  }>("portalInicio");
   const vencidas = cuotas.filter((x) => x.venc < h);
   const proxima = cuotas.find((x) => x.venc >= h);
   const nombre = (c?.nombre ?? u.nombre).split(" ")[0];

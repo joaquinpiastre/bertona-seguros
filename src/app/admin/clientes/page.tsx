@@ -1,26 +1,13 @@
 import Link from "next/link";
+import { dato, type Row } from "@/lib/api";
 import { Badge, Card, Flash, LinkBtn, PageHead, Tabla, Td, Th, btnGhost, inputCls } from "@/components/panel/ui";
-import { q } from "@/lib/db";
 import { money } from "@/lib/format";
 
 type SP = Promise<{ ok?: string; error?: string; q?: string; ver?: string }>;
 
 export default async function Clientes({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
-  const params: unknown[] = [];
-  let where = sp.ver === "inactivos" ? "NOT c.activo" : "c.activo";
-  if (sp.q) {
-    params.push(`%${sp.q}%`);
-    where += ` AND (c.nombre ILIKE $1 OR c.documento ILIKE $1 OR c.email ILIKE $1 OR c.telefono ILIKE $1 OR EXISTS (SELECT 1 FROM polizas p WHERE p.cliente_id = c.id AND (p.numero ILIKE $1 OR p.dominio ILIKE $1)))`;
-  }
-  const filas = await q(
-    `SELECT c.id, c.nombre, c.documento, c.telefono, c.email,
-            (SELECT COUNT(*)::int FROM polizas p WHERE p.cliente_id = c.id AND p.estado = 'vigente') AS polizas,
-            (SELECT COALESCE(SUM(x.importe),0)::float8 FROM cuotas x JOIN polizas p ON p.id = x.poliza_id WHERE p.cliente_id = c.id AND x.estado = 'pendiente' AND x.vencimiento < CURRENT_DATE) AS deuda,
-            EXISTS (SELECT 1 FROM usuarios u WHERE u.cliente_id = c.id) AS tiene_acceso
-     FROM clientes c WHERE ${where} ORDER BY c.nombre LIMIT 300`,
-    params
-  );
+  const { filas } = await dato<{ filas: Row[] }>("clientes", { q: sp.q, ver: sp.ver });
   return (
     <>
       <PageHead title="Clientes" sub="Socios y asegurados" actions={<LinkBtn variant="gold" href="/admin/clientes/nuevo">Nuevo cliente</LinkBtn>} />

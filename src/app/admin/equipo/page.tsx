@@ -1,14 +1,14 @@
 import { SubmitButton } from "@/components/panel/Cliente";
+import { dato, type Row } from "@/lib/api";
 import { Badge, Card, Field, Flash, PageHead, Tabla, Td, Th } from "@/components/panel/ui";
 import { alternarUsuario, crearAdmin, restablecerPassword } from "@/lib/actions/admin";
 import { requireAdmin } from "@/lib/auth";
-import { q } from "@/lib/db";
 import { fecha } from "@/lib/format";
 
 export default async function Equipo({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const sp = await searchParams;
   const yo = await requireAdmin();
-  const admins = await q("SELECT id, nombre, email, activo, creado::text AS creado FROM usuarios WHERE rol = 'admin' ORDER BY id");
+  const { admins } = await dato<{ admins: Row[] }>("equipo");
   return (
     <>
       <PageHead title="Equipo" sub="Personas de la empresa con acceso al panel de administración" />

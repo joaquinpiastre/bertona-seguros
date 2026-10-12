@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { dato, type Row } from "@/lib/api";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { SubmitButton } from "@/components/panel/Cliente";
@@ -6,14 +7,13 @@ import { PortalNav } from "@/components/panel/PortalNav";
 import { waLink } from "@/config/empresa";
 import { logout } from "@/lib/actions/auth";
 import { requireSocio } from "@/lib/auth";
-import { q1 } from "@/lib/db";
 
 export const metadata: Metadata = { title: "Mi cuenta | Bertona Seguros", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const u = await requireSocio();
-  const c = await q1("SELECT nombre FROM clientes WHERE id = $1", [u.cliente_id]);
+  const { c } = await dato<{ c: Row | null }>("portalLayout");
   return (
     <div className="min-h-screen bg-soft">
       <header className="bg-brand-900 text-white">

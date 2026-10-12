@@ -1,7 +1,7 @@
 import Link from "next/link";
+import { dato, type Row } from "@/lib/api";
 import { Badge, Card, Flash, LinkBtn, PageHead, Tabla, Td, Th, btnGhost, btnPrimary, inputCls } from "@/components/panel/ui";
 import { METODOS, esFecha, fecha, hoy, money } from "@/lib/format";
-import { listarPagos } from "@/lib/queries";
 
 type SP = Promise<{ ok?: string; error?: string; desde?: string; hasta?: string; metodo?: string; q?: string; estado?: string }>;
 
@@ -11,7 +11,7 @@ export default async function Pagos({ searchParams }: { searchParams: SP }) {
   const desde = esFecha(sp.desde) ? sp.desde : h.slice(0, 8) + "01";
   const hasta = esFecha(sp.hasta) ? sp.hasta : h;
   const metodo = sp.metodo && METODOS[sp.metodo] ? sp.metodo : "";
-  const filas = await listarPagos({ desde, hasta, metodo: metodo || undefined, busqueda: sp.q?.trim() || undefined, estado: sp.estado });
+  const { filas } = await dato<{ filas: Row[] }>("pagos", { desde, hasta, metodo, q: sp.q?.trim(), estado: sp.estado });
 
   const aplicados = filas.filter((f) => f.estado === "aplicado");
   const total = aplicados.reduce((s, f) => s + f.importe, 0);

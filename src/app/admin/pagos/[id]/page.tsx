@@ -1,10 +1,10 @@
 import Link from "next/link";
+import { dato, type Row } from "@/lib/api";
 import { notFound } from "next/navigation";
 import { SubmitButton } from "@/components/panel/Cliente";
 import { Badge, Card, Dato, Flash, LinkBtn, PageHead, btnGhost, inputCls } from "@/components/panel/ui";
 import { waLink } from "@/config/empresa";
 import { anularPago, eliminarDocumento, subirArchivoPago } from "@/lib/actions/admin";
-import { q, q1 } from "@/lib/db";
 import { METODOS, TIPOS_DOC, fecha, money, waNumero } from "@/lib/format";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; error?: string }> };
@@ -12,16 +12,7 @@ type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: str
 export default async function DetallePago({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const p = await q1(
-    `SELECT pg.*, pg.fecha::text AS fecha_t, pg.importe::float8 AS imp, cl.nombre AS cliente, cl.telefono, cl.id AS cid,
-            po.numero AS poliza, po.compania, po.dominio, po.riesgo, po.cuotas_cant, c.numero AS cuota_n, u.nombre AS por
-     FROM pagos pg JOIN clientes cl ON cl.id = pg.cliente_id
-     LEFT JOIN polizas po ON po.id = pg.poliza_id LEFT JOIN cuotas c ON c.id = pg.cuota_id LEFT JOIN usuarios u ON u.id = pg.registrado_por
-     WHERE pg.id = $1`,
-    [Number(id)]
-  );
-  if (!p) notFound();
-  const docs = await q("SELECT id, tipo, nombre, tamano, creado::text AS creado FROM documentos WHERE pago_id = $1 ORDER BY id", [p.id]);
+  const { p, docs } = await dato<{ p: Row; docs: Row[] }>("pagoDetalle", { id });
   const anulado = p.estado === "anulado";
   const nro = String(p.recibo_nro).padStart(6, "0");
   const wa = waNumero(p.telefono);

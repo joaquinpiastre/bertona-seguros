@@ -1,14 +1,14 @@
 import { SubmitButton } from "@/components/panel/Cliente";
+import { dato, type Row } from "@/lib/api";
 import { Card, Field, Flash, SelectField } from "@/components/panel/ui";
 import { actualizarContacto, crearContacto, eliminarContacto } from "@/lib/actions/portal";
 import { portalUsuario } from "@/lib/auth";
-import { q } from "@/lib/db";
 import { PARENTESCOS } from "@/lib/format";
 
 export default async function Contactos({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const sp = await searchParams;
   const u = await portalUsuario();
-  const contactos = await q("SELECT * FROM contactos_emergencia WHERE cliente_id = $1 ORDER BY id", [u.cliente_id]);
+  const { contactos } = await dato<{ contactos: Row[] }>("portalContactos");
   return (
     <>
       <h1 className="text-2xl text-brand-900 sm:text-3xl">Contactos de emergencia</h1>

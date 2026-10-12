@@ -1,7 +1,7 @@
 import { CobroForm } from "@/components/panel/Cliente";
+import { dato, type Row } from "@/lib/api";
 import { Card, Flash, PageHead, SelectField, btnPrimary } from "@/components/panel/ui";
 import { registrarPago } from "@/lib/actions/admin";
-import { q } from "@/lib/db";
 import { METODOS, hoy } from "@/lib/format";
 
 type SP = Promise<{ ok?: string; error?: string; cliente?: string; cuota?: string }>;
@@ -9,26 +9,10 @@ type SP = Promise<{ ok?: string; error?: string; cliente?: string; cuota?: strin
 export default async function NuevoCobro({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const h = hoy();
-  let clienteId = Number(sp.cliente) || 0;
   const cuotaId = Number(sp.cuota) || 0;
-  if (!clienteId && cuotaId) {
-    const r = await q("SELECT p.cliente_id FROM cuotas c JOIN polizas p ON p.id = c.poliza_id WHERE c.id = $1", [cuotaId]);
-    clienteId = r[0]?.cliente_id ?? 0;
-  }
-
-  const clientes = await q("SELECT id, nombre, documento FROM clientes WHERE activo ORDER BY nombre");
-  const cliente = clienteId ? (await q("SELECT id, nombre, documento, telefono FROM clientes WHERE id = $1", [clienteId]))[0] : null;
-  const cuotas = cliente
-    ? await q(
-        `SELECT c.id, c.numero, c.vencimiento::text AS vencimiento, c.importe::float8 AS importe, p.numero AS poliza, p.compania,
-                COALESCE(p.dominio,'') AS dominio, p.cuotas_cant AS total
-         FROM cuotas c JOIN polizas p ON p.id = c.poliza_id
-         WHERE p.cliente_id = $1 AND c.estado = 'pendiente' AND p.estado <> 'anulada'
-         ORDER BY c.vencimiento, p.id, c.numero LIMIT 60`,
-        [clienteId]
-      )
-    : [];
-  const polizas = cliente ? await q("SELECT id, compania, numero FROM polizas WHERE cliente_id = $1 ORDER BY id DESC", [clienteId]) : [];
+  const { clienteId, clientes, cliente, cuotas, polizas } = await dato<{
+    clienteId: number; clientes: Row[]; cliente: Row | null; cuotas: Row[]; polizas: Row[];
+  }>("pagosNuevo", { cliente: sp.cliente, cuota: sp.cuota });
 
   return (
     <>

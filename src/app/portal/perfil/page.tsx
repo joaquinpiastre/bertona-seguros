@@ -1,13 +1,13 @@
 import { SubmitButton } from "@/components/panel/Cliente";
+import { dato, type Row } from "@/lib/api";
 import { Card, Dato, Field, Flash } from "@/components/panel/ui";
 import { actualizarPerfil, cambiarPassword } from "@/lib/actions/portal";
 import { portalUsuario } from "@/lib/auth";
-import { q1 } from "@/lib/db";
 
 export default async function Perfil({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string; cambiar?: string }> }) {
   const sp = await searchParams;
   const u = await portalUsuario({ permitirCambio: true });
-  const c = await q1("SELECT * FROM clientes WHERE id = $1", [u.cliente_id]);
+  const { c } = await dato<{ c: Row | null }>("portalPerfil");
   return (
     <>
       <h1 className="mb-6 text-2xl text-brand-900 sm:text-3xl">Mis datos</h1>

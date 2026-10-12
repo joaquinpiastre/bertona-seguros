@@ -1,9 +1,9 @@
 import Link from "next/link";
+import { dato, type Row } from "@/lib/api";
 import { notFound } from "next/navigation";
 import { SubmitButton } from "@/components/panel/Cliente";
 import { Badge, Card, Field, Flash, LinkBtn, PageHead, SelectField, Tabla, Td, TextArea, Th, inputCls } from "@/components/panel/ui";
 import { actualizarCuota, actualizarPoliza, agregarCuota, anularCuota, eliminarDocumento, subirDocumento } from "@/lib/actions/admin";
-import { q, q1 } from "@/lib/db";
 import { ESTADOS_POLIZA, PERIODICIDAD, RAMOS_LISTA, TIPOS_DOC, fecha, hoy, money } from "@/lib/format";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; error?: string }> };
@@ -12,21 +12,9 @@ export default async function DetallePoliza({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
   const pid = Number(id);
-  const p = await q1(
-    `SELECT p.*, p.vigencia_desde::text AS desde, p.vigencia_hasta::text AS hasta, p.suma_asegurada::float8 AS suma, p.importe_cuota::float8 AS imp,
-            cl.nombre AS cliente, cl.telefono FROM polizas p JOIN clientes cl ON cl.id = p.cliente_id WHERE p.id = $1`,
-    [pid]
-  );
-  if (!p) notFound();
   const h = hoy();
-  const [cuotas, docs] = await Promise.all([
-    q(
-      `SELECT c.id, c.numero, c.vencimiento::text AS venc, c.importe::float8 AS importe, c.estado,
-              (SELECT pg.id FROM pagos pg WHERE pg.cuota_id = c.id AND pg.estado = 'aplicado' ORDER BY pg.id DESC LIMIT 1) AS pago_id,
-              (SELECT pg.recibo_nro FROM pagos pg WHERE pg.cuota_id = c.id AND pg.estado = 'aplicado' ORDER BY pg.id DESC LIMIT 1) AS recibo
-       FROM cuotas c WHERE c.poliza_id = $1 ORDER BY c.numero`, [pid]),
-    q("SELECT id, tipo, nombre, tamano, creado::text AS creado FROM documentos WHERE poliza_id = $1 AND pago_id IS NULL ORDER BY id", [pid]),
-  ]);
+  const { p, cuotas, docs } = await dato<{ p: Row; cuotas: Row[]; docs: Row[] }>("polizaDetalle", { id: pid });
+
   const volver = `/admin/polizas/${pid}`;
   const pagadas = cuotas.filter((c) => c.estado === "pagada").length;
   const faltaPoliza = !docs.some((d) => d.tipo === "poliza");

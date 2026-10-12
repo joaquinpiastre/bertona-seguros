@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont } from "pdf-lib";
-import { DIRECCION_COMPLETA, EMPRESA, PRODUCTOR, RECIBO_LEGAL, SSN_TELEFONO, TELEFONO_COBRANZA } from "@/config/empresa";
+import { DIRECCION_COMPLETA, EMPRESA, PRODUCTOR, RECIBO_LEGAL, SSN_TELEFONO, TELEFONO_COBRANZA } from "./empresa";
 import { fecha, money } from "./format";
 import { LOGO_B64 } from "./logo-b64";
 

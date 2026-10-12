@@ -1,7 +1,7 @@
 import Link from "next/link";
+import { dato, type Row } from "@/lib/api";
 import { Badge, Card, Flash, LinkBtn, PageHead, Tabla, Td, Th, btnGhost, btnPrimary, inputCls } from "@/components/panel/ui";
 import { waLink } from "@/config/empresa";
-import { q } from "@/lib/db";
 import { fecha, hoy, money, sumarDias, waNumero } from "@/lib/format";
 
 type SP = Promise<{ ok?: string; error?: string; filtro?: string; q?: string }>;
@@ -10,28 +10,7 @@ export default async function Cobranzas({ searchParams }: { searchParams: SP }) 
   const sp = await searchParams;
   const h = hoy();
   const filtro = sp.filtro === "proximas" || sp.filtro === "todas" ? sp.filtro : "vencidas";
-  const params: unknown[] = [];
-  let where = "c.estado = 'pendiente'";
-  if (filtro === "vencidas") {
-    params.push(h);
-    where += ` AND c.vencimiento < $${params.length}`;
-  } else if (filtro === "proximas") {
-    params.push(h, sumarDias(h, 15));
-    where += ` AND c.vencimiento BETWEEN $${params.length - 1} AND $${params.length}`;
-  }
-  if (sp.q) {
-    params.push(`%${sp.q}%`);
-    where += ` AND (cl.nombre ILIKE $${params.length} OR p.numero ILIKE $${params.length} OR p.dominio ILIKE $${params.length})`;
-  }
-  const filas = await q(
-    `SELECT c.id, c.numero, c.vencimiento::text AS venc, c.importe::float8 AS importe,
-            p.id AS poliza_id, p.numero AS poliza, p.cuotas_cant, p.compania, p.dominio, p.riesgo,
-            cl.id AS cliente_id, cl.nombre AS cliente, cl.telefono
-     FROM cuotas c JOIN polizas p ON p.id = c.poliza_id JOIN clientes cl ON cl.id = p.cliente_id
-     WHERE ${where} AND cl.activo AND p.estado <> 'anulada'
-     ORDER BY c.vencimiento, cl.nombre LIMIT 300`,
-    params
-  );
+  const { filas } = await dato<{ filas: Row[] }>("cobranzas", { filtro, q: sp.q });
   const total = filas.reduce((s, f) => s + f.importe, 0);
 
   const tab = (v: string, l: string) => (

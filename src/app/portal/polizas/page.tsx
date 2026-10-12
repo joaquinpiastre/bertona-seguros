@@ -1,19 +1,13 @@
 import { Badge, Card, Dato, Flash, btnGhost } from "@/components/panel/ui";
+import { dato, type Row } from "@/lib/api";
 import { waLink } from "@/config/empresa";
 import { portalUsuario } from "@/lib/auth";
-import { q } from "@/lib/db";
 import { ESTADOS_POLIZA, PERIODICIDAD, TIPOS_DOC, fecha, money } from "@/lib/format";
 
 export default async function MisPolizas({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const sp = await searchParams;
   const u = await portalUsuario();
-  const polizas = await q(
-    `SELECT p.*, p.vigencia_desde::text AS desde, p.vigencia_hasta::text AS hasta, p.suma_asegurada::float8 AS suma, p.importe_cuota::float8 AS imp,
-            (SELECT COUNT(*)::int FROM cuotas c WHERE c.poliza_id = p.id AND c.estado = 'pagada') AS pagadas,
-            (SELECT COUNT(*)::int FROM cuotas c WHERE c.poliza_id = p.id AND c.estado <> 'anulada') AS total
-     FROM polizas p WHERE p.cliente_id = $1 ORDER BY (p.estado = 'vigente') DESC, p.id DESC`, [u.cliente_id]);
-  const docs = await q(
-    "SELECT id, poliza_id, tipo, nombre, tamano FROM documentos WHERE cliente_id = $1 AND pago_id IS NULL AND poliza_id IS NOT NULL ORDER BY id", [u.cliente_id]);
+  const { polizas, docs } = await dato<{ polizas: Row[]; docs: Row[] }>("portalPolizas");
 
   return (
     <>

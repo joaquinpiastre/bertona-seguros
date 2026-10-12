@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { dato, type Row } from "@/lib/api";
 import { Badge, Card, Flash, LinkBtn, PageHead, Tabla, Td, Th, btnGhost, inputCls } from "@/components/panel/ui";
-import { q } from "@/lib/db";
 import { ESTADOS_POLIZA, RAMOS_LISTA, fecha, hoy, sumarDias } from "@/lib/format";
 
 type SP = Promise<{ ok?: string; error?: string; q?: string; estado?: string; ramo?: string; porvencer?: string }>;
@@ -8,24 +8,7 @@ type SP = Promise<{ ok?: string; error?: string; q?: string; estado?: string; ra
 export default async function Polizas({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const h = hoy();
-  const params: unknown[] = [];
-  const cond: string[] = [];
-  if (sp.q) {
-    params.push(`%${sp.q}%`);
-    cond.push(`(cl.nombre ILIKE $${params.length} OR p.numero ILIKE $${params.length} OR p.dominio ILIKE $${params.length} OR p.compania ILIKE $${params.length})`);
-  }
-  if (sp.estado && ESTADOS_POLIZA[sp.estado]) { params.push(sp.estado); cond.push(`p.estado = $${params.length}`); }
-  if (sp.ramo) { params.push(sp.ramo); cond.push(`p.ramo = $${params.length}`); }
-  if (sp.porvencer) { params.push(h, sumarDias(h, 30)); cond.push(`p.estado = 'vigente' AND p.vigencia_hasta BETWEEN $${params.length - 1} AND $${params.length}`); }
-  const filas = await q(
-    `SELECT p.id, p.ramo, p.compania, p.numero, p.dominio, p.riesgo, p.estado, p.vigencia_hasta::text AS hasta, cl.id AS cliente_id, cl.nombre AS cliente,
-            (SELECT COUNT(*)::int FROM documentos d WHERE d.poliza_id = p.id AND d.tipo = 'poliza') AS tiene_poliza,
-            (SELECT COUNT(*)::int FROM documentos d WHERE d.poliza_id = p.id AND d.tipo = 'certificado') AS tiene_cert,
-            (SELECT COUNT(*)::int FROM cuotas c WHERE c.poliza_id = p.id AND c.estado = 'pendiente' AND c.vencimiento < $${params.length + 1}) AS vencidas
-     FROM polizas p JOIN clientes cl ON cl.id = p.cliente_id
-     ${cond.length ? "WHERE " + cond.join(" AND ") : ""} ORDER BY p.id DESC LIMIT 300`,
-    [...params, h]
-  );
+  const { filas } = await dato<{ filas: Row[] }>("polizas", { q: sp.q, estado: sp.estado, ramo: sp.ramo, porvencer: sp.porvencer });
   return (
     <>
       <PageHead title="Pólizas" sub="Todas las pólizas cargadas" actions={<LinkBtn variant="gold" href="/admin/polizas/nueva">Nueva póliza</LinkBtn>} />

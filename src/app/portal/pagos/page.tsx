@@ -1,23 +1,13 @@
 import { Badge, Card, Flash, Tabla, Td, Th } from "@/components/panel/ui";
+import { dato, type Row } from "@/lib/api";
 import { portalUsuario } from "@/lib/auth";
-import { q } from "@/lib/db";
 import { METODOS, fecha, hoy, money } from "@/lib/format";
 
 export default async function MisPagos({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const sp = await searchParams;
   const u = await portalUsuario();
   const h = hoy();
-  const [cuotas, pagos, comprobantes] = await Promise.all([
-    q(
-      `SELECT c.id, c.numero, c.vencimiento::text AS venc, c.importe::float8 AS importe, p.numero AS poliza, p.compania, p.dominio, p.cuotas_cant
-       FROM cuotas c JOIN polizas p ON p.id = c.poliza_id
-       WHERE p.cliente_id = $1 AND c.estado = 'pendiente' AND p.estado <> 'anulada' ORDER BY c.vencimiento`, [u.cliente_id]),
-    q(
-      `SELECT pg.id, pg.recibo_nro, pg.fecha::text AS fecha, pg.importe::float8 AS importe, pg.metodo, p.numero AS poliza, p.compania, c.numero AS cuota_n, p.cuotas_cant
-       FROM pagos pg LEFT JOIN polizas p ON p.id = pg.poliza_id LEFT JOIN cuotas c ON c.id = pg.cuota_id
-       WHERE pg.cliente_id = $1 AND pg.estado = 'aplicado' ORDER BY pg.fecha DESC, pg.id DESC LIMIT 200`, [u.cliente_id]),
-    q("SELECT id, pago_id, nombre FROM documentos WHERE cliente_id = $1 AND tipo = 'comprobante' AND pago_id IS NOT NULL", [u.cliente_id]),
-  ]);
+  const { cuotas, pagos, comprobantes } = await dato<{ cuotas: Row[]; pagos: Row[]; comprobantes: Row[] }>("portalPagos");
 
   return (
     <>

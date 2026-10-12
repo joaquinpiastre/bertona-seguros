@@ -1,12 +1,12 @@
 import { SubmitButton } from "@/components/panel/Cliente";
+import { dato, type Row } from "@/lib/api";
 import { Card, Field, Flash, LinkBtn, PageHead, SelectField, TextArea } from "@/components/panel/ui";
 import { crearPoliza } from "@/lib/actions/admin";
-import { q } from "@/lib/db";
 import { ESTADOS_POLIZA, PERIODICIDAD, RAMOS_LISTA, hoy } from "@/lib/format";
 
 export default async function NuevaPoliza({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string; cliente?: string }> }) {
   const sp = await searchParams;
-  const clientes = await q("SELECT id, nombre, documento FROM clientes WHERE activo ORDER BY nombre");
+  const { clientes } = await dato<{ clientes: Row[] }>("polizaNueva");
   const h = hoy();
   return (
     <>

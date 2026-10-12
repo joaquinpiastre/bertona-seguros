@@ -16,3 +16,6 @@ muestras/
 AGENTS.md
 dev.log
 *.tsbuildinfo
+
+dist
+backend/dist
