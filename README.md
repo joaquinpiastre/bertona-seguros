@@ -23,3 +23,12 @@ npm install && API_URL=http://localhost:4000 INTERNAL_API_KEY=devkey npm run dev
 Sin `DATABASE_URL` el backend crea el admin `admin@bertona.local` / `admin1234` (solo desarrollo).
 
 Datos de la empresa editables: `src/config/empresa.ts` (y `backend/src/empresa.ts` para los recibos).
+
+## Publicar cambios
+Con las integraciones de GitHub activas, un push a `main` despliega solo (Vercel el frontend, Railway la carpeta `backend`).
+Si no se dispara solo, se publica a mano desde la raíz del proyecto:
+```
+npm run deploy         # frontend (Vercel) + backend (Railway)
+npm run deploy:front   # solo frontend
+npm run deploy:back    # solo backend
+```

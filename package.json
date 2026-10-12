@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "deploy": "vercel deploy --prod --yes && railway up --service web --detach -m \"deploy\"",
+    "deploy:front": "vercel deploy --prod --yes",
+    "deploy:back": "railway up --service web --detach -m \"deploy backend\""
   },
   "dependencies": {
     "next": "^16.4.0",
