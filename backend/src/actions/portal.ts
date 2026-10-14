@@ -1,7 +1,9 @@
 import bcrypt from "bcryptjs";
 import { requireSocio } from "../auth";
 import { q, q1 } from "../db";
-import { ir, txt, txtONull } from "../flash";
+import { leerArchivo } from "../archivos";
+import { ir, num, txt, txtONull } from "../flash";
+import { METODOS, esFecha } from "../format";
 
 export async function crearContacto(fd: FormData) {
   const u = await requireSocio();
@@ -54,4 +56,46 @@ export async function cambiarPassword(fd: FormData) {
   if (nueva !== repetir) ir("/portal/perfil", "error", "Las contraseñas nuevas no coinciden.");
   await q("UPDATE usuarios SET password_hash = $2, debe_cambiar_password = FALSE WHERE id = $1", [u.id, await bcrypt.hash(nueva, 10)]);
   ir("/portal/perfil", "ok", "Contraseña actualizada.");
+}
+
+/** El socio informa un pago y adjunta el comprobante; el administrador lo revisa y lo impacta. */
+export async function enviarComprobante(fd: FormData) {
+  const u = await requireSocio();
+  const volver = "/portal/pagos";
+  const cuotaId = Number(txt(fd, "cuota_id")) || null;
+  const metodo = txt(fd, "metodo") || "transferencia";
+  const fecha = txt(fd, "fecha");
+  const importe = num(fd, "importe");
+  if (!METODOS[metodo]) ir(volver, "error", "Elegí la forma de pago.");
+  if (fecha && !esFecha(fecha)) ir(volver, "error", "La fecha no es válida.");
+  let a;
+  try {
+    a = await leerArchivo(fd, "archivo");
+  } catch (e) {
+    ir(volver, "error", e instanceof Error ? e.message : "Archivo inválido.");
+  }
+  if (!a) ir(volver, "error", "Adjuntá la foto o el PDF del comprobante.");
+  let polizaId: number | null = null;
+  if (cuotaId) {
+    const c = await q1(
+      "SELECT c.estado, c.poliza_id FROM cuotas c JOIN polizas p ON p.id = c.poliza_id WHERE c.id = $1 AND p.cliente_id = $2",
+      [cuotaId, u.cliente_id]
+    );
+    if (!c) ir(volver, "error", "La cuota elegida no es tuya o no existe.");
+    if (c!.estado !== "pendiente") ir(volver, "error", "Esa cuota ya figura como paga.");
+    polizaId = c!.poliza_id;
+  }
+  const abiertos = await q1("SELECT COUNT(*)::int AS n FROM avisos_pago WHERE cliente_id = $1 AND estado = 'pendiente'", [u.cliente_id]);
+  if (abiertos!.n >= 10) ir(volver, "error", "Ya tenés varios comprobantes en revisión. Esperá a que los procesemos.");
+  const d = await q1(
+    `INSERT INTO documentos (cliente_id, poliza_id, tipo, nombre, mime, tamano, datos, subido_por)
+     VALUES ($1,$2,'comprobante',$3,$4,$5,$6,$7) RETURNING id`,
+    [u.cliente_id, polizaId, a!.nombre, a!.mime, a!.datos.length, a!.datos, u.id]
+  );
+  await q(
+    `INSERT INTO avisos_pago (cliente_id, poliza_id, cuota_id, importe, fecha, metodo, nota, documento_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+    [u.cliente_id, polizaId, cuotaId, Number.isFinite(importe) ? importe : null, fecha || null, metodo, txtONull(fd, "nota"), d!.id]
+  );
+  ir(volver, "ok", "Recibimos tu comprobante. Lo vamos a revisar y, cuando lo confirmemos, vas a ver tu recibo acá.");
 }

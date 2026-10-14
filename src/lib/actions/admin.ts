@@ -78,3 +78,10 @@ export async function subirArchivoPago(fd: FormData) {
   await accion("subirArchivoPago", fd);
 }
 
+export async function rechazarAviso(fd: FormData) {
+  await accion("rechazarAviso", fd);
+}
+
+export async function eliminarCliente(fd: FormData) {
+  await accion("eliminarCliente", fd);
+}

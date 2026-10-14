@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 const ITEMS = [
   { href: "/admin", label: "Resumen", exact: true },
   { href: "/admin/cobranzas", label: "Cobranzas" },
+  { href: "/admin/comprobantes", label: "Comprobantes" },
   { href: "/admin/pagos", label: "Pagos y caja" },
   { href: "/admin/clientes", label: "Clientes" },
   { href: "/admin/polizas", label: "Pólizas" },

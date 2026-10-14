@@ -91,12 +91,14 @@ export function CobroForm({
   cuotaInicial,
   clienteId,
   action,
+  aviso,
 }: {
   cuotas: { id: number; poliza: string; compania: string; dominio: string; numero: number; total: number; vencimiento: string; importe: number; vencida: boolean }[];
   hoy: string;
   metodos: [string, string][];
   polizas: { id: number; label: string }[];
   cuotaInicial?: number;
+  aviso?: { id: number; importe: number | null; fecha: string | null; metodo: string | null; documento_id: number | null; nota: string | null } | null;
   clienteId: number;
   action: (fd: FormData) => void | Promise<void>;
 }) {
@@ -104,13 +106,24 @@ export function CobroForm({
   const imp = useRef<HTMLInputElement>(null);
   const sel = cuotas.find((c) => String(c.id) === cuota);
   useEffect(() => {
-    if (sel && imp.current) imp.current.value = String(sel.importe);
+    if (sel && imp.current && !aviso?.importe) imp.current.value = String(sel.importe);
   }, [sel]);
   const campo = "mt-1.5 w-full border border-line bg-white px-3 py-2.5 text-sm text-ink hover:border-brand-200 focus:border-brand-500";
   const lab = "block text-sm font-semibold text-brand-900";
   return (
     <form action={action} className="space-y-6">
       <input type="hidden" name="cliente_id" value={clienteId} />
+      {aviso && (
+        <>
+          <input type="hidden" name="aviso_id" value={aviso.id} />
+          <div className="border-l-4 border-brand-500 bg-brand-50 px-4 py-3 text-sm text-brand-900">
+            <strong>Comprobante enviado por el cliente.</strong>{" "}
+            {aviso.documento_id && <a href={`/api/documento/${aviso.documento_id}`} target="_blank" className="font-semibold underline">Ver archivo</a>}
+            {aviso.nota && <span className="block text-xs text-ink-soft">Nota del cliente: {aviso.nota}</span>}
+            <span className="block text-xs text-ink-soft">Revisalo, verificá que el dinero haya ingresado y confirmá el cobro. Al registrarlo, el comprobante queda asociado al recibo.</span>
+          </div>
+        </>
+      )}
       <fieldset>
         <legend className="mb-2 text-sm font-semibold text-brand-900">¿Qué cuota se paga?</legend>
         <div className="space-y-2">
@@ -148,15 +161,15 @@ export function CobroForm({
       <div className="grid gap-4 sm:grid-cols-3">
         <label className={lab}>
           Importe cobrado (ARS) <span className="text-red-600">*</span>
-          <input ref={imp} name="importe" required inputMode="decimal" placeholder="0,00" className={campo} />
+          <input ref={imp} name="importe" required inputMode="decimal" placeholder="0,00" defaultValue={aviso?.importe ?? undefined} className={campo} />
         </label>
         <label className={lab}>
           Fecha de pago <span className="text-red-600">*</span>
-          <input name="fecha" type="date" required defaultValue={hoy} className={campo} />
+          <input name="fecha" type="date" required defaultValue={aviso?.fecha ?? hoy} className={campo} />
         </label>
         <label className={lab}>
           Forma de pago <span className="text-red-600">*</span>
-          <select name="metodo" required defaultValue="efectivo" className={campo}>
+          <select name="metodo" required defaultValue={aviso?.metodo ?? "efectivo"} className={campo}>
             {metodos.map(([v, l]) => (
               <option key={v} value={v}>{l}</option>
             ))}

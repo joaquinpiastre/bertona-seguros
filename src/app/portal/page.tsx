@@ -47,6 +47,7 @@ export default async function PortalInicio({ searchParams }: { searchParams: Pro
         <Card title="Siniestros y consultas" className="md:col-span-2">
           <p className="text-sm text-ink-soft">Ante un siniestro mantené la calma, resguardá a las personas, juntá datos y fotos y avisanos de inmediato. Te guiamos en la denuncia paso a paso.</p>
           <div className="mt-4 flex flex-wrap gap-2">
+            <Link href="/portal/presentar" className="inline-flex bg-brand-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">Presentar documentación</Link>
             <a href={waLink("Hola! Tuve un siniestro y necesito ayuda con la denuncia.")} target="_blank" rel="noopener noreferrer" className="inline-flex bg-accent-500 px-4 py-2.5 text-sm font-semibold text-brand-900 hover:bg-accent-400">Avisar un siniestro</a>
             <a href={`tel:${EMPRESA.telefonoTel}`} className={btnGhost}>Llamar a la oficina</a>
           </div>

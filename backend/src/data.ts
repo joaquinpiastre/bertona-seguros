@@ -19,7 +19,7 @@ export const DATOS: Record<string, (sp: SP) => Promise<unknown>> = {
     const mesIni = h.slice(0, 8) + "01";
     const en7 = sumarDias(h, 7);
     const en30 = sumarDias(h, 30);
-    const [mes, dia, venc, prox, polizas, porVencer, clientes, hoyMetodos, vencidas, proximas, ultimos] = await Promise.all([
+    const [mes, dia, venc, prox, polizas, porVencer, clientes, hoyMetodos, vencidas, proximas, ultimos, avisos] = await Promise.all([
       q1("SELECT COALESCE(SUM(importe),0)::float8 AS t, COUNT(*)::int AS n FROM pagos WHERE estado='aplicado' AND fecha >= $1 AND fecha <= $2", [mesIni, h]),
       q1("SELECT COALESCE(SUM(importe),0)::float8 AS t, COUNT(*)::int AS n FROM pagos WHERE estado='aplicado' AND fecha = $1", [h]),
       q1("SELECT COALESCE(SUM(importe),0)::float8 AS t, COUNT(*)::int AS n FROM cuotas WHERE estado='pendiente' AND vencimiento < $1", [h]),
@@ -40,8 +40,9 @@ export const DATOS: Record<string, (sp: SP) => Promise<unknown>> = {
         `SELECT pg.id, pg.recibo_nro, pg.fecha::text AS fecha, pg.importe::float8 AS importe, pg.metodo, pg.estado, cl.id AS cliente_id, cl.nombre AS cliente, p.numero AS poliza
          FROM pagos pg JOIN clientes cl ON cl.id = pg.cliente_id LEFT JOIN polizas p ON p.id = pg.poliza_id
          ORDER BY pg.id DESC LIMIT 8`),
+      q1("SELECT COUNT(*)::int AS n FROM avisos_pago WHERE estado = 'pendiente'"),
     ]);
-    return { mes, dia, venc, prox, polizas, porVencer, clientes, hoyMetodos, vencidas, proximas, ultimos };
+    return { mes, dia, venc, prox, polizas, porVencer, clientes, hoyMetodos, vencidas, proximas, ultimos, avisos };
   },
 
   async cobranzas(sp) {
@@ -90,6 +91,16 @@ export const DATOS: Record<string, (sp: SP) => Promise<unknown>> = {
     await requireAdmin();
     let clienteId = Number(sp.get("cliente")) || 0;
     const cuotaId = Number(sp.get("cuota")) || 0;
+    const avisoId = Number(sp.get("aviso")) || 0;
+    let aviso: Record<string, unknown> | null = null;
+    if (avisoId) {
+      aviso = await q1(
+        "SELECT id, cliente_id, cuota_id, importe::float8 AS importe, fecha::text AS fecha, metodo, nota, documento_id FROM avisos_pago WHERE id = $1 AND estado = 'pendiente'",
+        [avisoId]
+      );
+      if (aviso && !clienteId) clienteId = Number(aviso.cliente_id);
+      if (aviso && Number(aviso.cliente_id) !== clienteId) aviso = null;
+    }
     if (!clienteId && cuotaId) {
       const r = await q("SELECT p.cliente_id FROM cuotas c JOIN polizas p ON p.id = c.poliza_id WHERE c.id = $1", [cuotaId]);
       clienteId = r[0]?.cliente_id ?? 0;
@@ -107,7 +118,7 @@ export const DATOS: Record<string, (sp: SP) => Promise<unknown>> = {
         )
       : [];
     const polizas = cliente ? await q("SELECT id, compania, numero FROM polizas WHERE cliente_id = $1 ORDER BY id DESC", [clienteId]) : [];
-    return { clienteId, clientes, cliente, cuotas, polizas };
+    return { clienteId, clientes, cliente, cuotas, polizas, aviso };
   },
 
   async pagoDetalle(sp) {
@@ -219,6 +230,20 @@ export const DATOS: Record<string, (sp: SP) => Promise<unknown>> = {
     return { p, cuotas, docs };
   },
 
+  async avisos() {
+    await requireAdmin();
+    const filas = await q(
+      `SELECT a.id, a.estado, a.motivo, a.importe::float8 AS importe, a.fecha::text AS fecha, a.metodo, a.nota, a.documento_id, a.creado::text AS creado,
+              a.cliente_id, cl.nombre AS cliente, cl.telefono, p.numero AS poliza, p.compania, p.dominio, c.id AS cuota_id, c.numero AS cuota_n,
+              c.importe::float8 AS cuota_importe, p.cuotas_cant, a.pago_id
+       FROM avisos_pago a JOIN clientes cl ON cl.id = a.cliente_id
+       LEFT JOIN polizas p ON p.id = a.poliza_id LEFT JOIN cuotas c ON c.id = a.cuota_id
+       WHERE a.estado = 'pendiente' OR a.creado > now() - interval '30 days'
+       ORDER BY (a.estado = 'pendiente') DESC, a.id DESC LIMIT 100`
+    );
+    return { filas };
+  },
+
   async equipo() {
     await requireAdmin();
     return { admins: await q("SELECT id, nombre, email, activo, creado::text AS creado FROM usuarios WHERE rol = 'admin' ORDER BY id") };
@@ -277,7 +302,31 @@ export const DATOS: Record<string, (sp: SP) => Promise<unknown>> = {
          WHERE pg.cliente_id = $1 AND pg.estado = 'aplicado' ORDER BY pg.fecha DESC, pg.id DESC LIMIT 200`, [u.cliente_id]),
       q("SELECT id, pago_id, nombre FROM documentos WHERE cliente_id = $1 AND tipo = 'comprobante' AND pago_id IS NOT NULL", [u.cliente_id]),
     ]);
-    return { cuotas, pagos, comprobantes };
+    const avisos = await q(
+      `SELECT a.id, a.estado, a.motivo, a.importe::float8 AS importe, a.fecha::text AS fecha, a.metodo, a.creado::text AS creado, a.documento_id,
+              c.numero AS cuota_n, p.cuotas_cant, p.numero AS poliza, p.compania
+       FROM avisos_pago a LEFT JOIN cuotas c ON c.id = a.cuota_id LEFT JOIN polizas p ON p.id = a.poliza_id
+       WHERE a.cliente_id = $1 ORDER BY a.id DESC LIMIT 20`, [u.cliente_id]);
+    return { cuotas, pagos, comprobantes, avisos };
+  },
+
+  async portalPresentar() {
+    const u = await portalUsuario();
+    const h = hoy();
+    const c = await q1("SELECT nombre, documento FROM clientes WHERE id = $1", [u.cliente_id]);
+    const polizas = await q(
+      `SELECT p.id, p.ramo, p.compania, p.numero, p.riesgo, p.dominio, p.estado, p.suma_asegurada::float8 AS suma,
+              p.vigencia_desde::text AS desde, p.vigencia_hasta::text AS hasta,
+              (SELECT COUNT(*)::int FROM cuotas x WHERE x.poliza_id = p.id AND x.estado = 'pendiente' AND x.vencimiento < $2) AS vencidas,
+              (SELECT x.vencimiento::text FROM cuotas x WHERE x.poliza_id = p.id AND x.estado = 'pendiente' ORDER BY x.vencimiento LIMIT 1) AS prox_venc,
+              (SELECT id FROM documentos d WHERE d.poliza_id = p.id AND d.tipo = 'poliza' AND d.pago_id IS NULL ORDER BY id DESC LIMIT 1) AS doc_poliza,
+              (SELECT id FROM documentos d WHERE d.poliza_id = p.id AND d.tipo = 'certificado' AND d.pago_id IS NULL ORDER BY id DESC LIMIT 1) AS doc_cert,
+              (SELECT pg.id FROM pagos pg WHERE pg.poliza_id = p.id AND pg.estado = 'aplicado' ORDER BY pg.fecha DESC, pg.id DESC LIMIT 1) AS ult_pago_id,
+              (SELECT pg.recibo_nro FROM pagos pg WHERE pg.poliza_id = p.id AND pg.estado = 'aplicado' ORDER BY pg.fecha DESC, pg.id DESC LIMIT 1) AS ult_recibo,
+              (SELECT pg.fecha::text FROM pagos pg WHERE pg.poliza_id = p.id AND pg.estado = 'aplicado' ORDER BY pg.fecha DESC, pg.id DESC LIMIT 1) AS ult_pago_fecha
+       FROM polizas p WHERE p.cliente_id = $1 AND p.estado IN ('vigente','en_tramite')
+       ORDER BY (p.dominio IS NULL), p.id DESC`, [u.cliente_id, h]);
+    return { c, polizas };
   },
 
   async portalContactos() {

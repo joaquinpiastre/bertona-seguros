@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { SubmitButton } from "@/components/panel/Cliente";
 import { Badge, Card, Field, Flash, LinkBtn, PageHead, SelectField, Tabla, Td, TextArea, Th } from "@/components/panel/ui";
 import {
-  actualizarCliente, alternarCliente, alternarUsuario, crearAccesoCliente, crearContactoAdmin, eliminarContactoAdmin, restablecerPassword,
+  actualizarCliente, alternarCliente, eliminarCliente, alternarUsuario, crearAccesoCliente, crearContactoAdmin, eliminarContactoAdmin, restablecerPassword,
 } from "@/lib/actions/admin";
 import { ESTADOS_POLIZA, METODOS, PARENTESCOS, fecha, money } from "@/lib/format";
 
@@ -132,6 +132,16 @@ export default async function DetalleCliente({ params, searchParams }: Props) {
           </div>
         </Card>
       </div>
+      <Card title="Zona de peligro" className="mt-6">
+        <p className="text-sm text-ink-soft">Eliminar borra definitivamente al cliente con sus pólizas, cuotas, pagos, recibos y archivos. Es para cargas de prueba o errores; si el cliente simplemente se fue, usá “Desactivar cliente”.</p>
+        <form action={eliminarCliente} className="mt-4 flex flex-wrap items-end gap-3">
+          <input type="hidden" name="id" value={cid} />
+          <label className="text-sm font-semibold text-brand-900">Escribí ELIMINAR para confirmar
+            <input name="confirmar" autoComplete="off" className="mt-1.5 block w-56 border border-line px-3 py-2.5 text-sm" />
+          </label>
+          <SubmitButton variant="danger" confirmar="¿Eliminar definitivamente este cliente y todo lo suyo?" pendiente="Eliminando…">Eliminar cliente</SubmitButton>
+        </form>
+      </Card>
     </>
   );
 }

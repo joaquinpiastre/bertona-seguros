@@ -1,4 +1,6 @@
-import { Badge, Card, Flash, Tabla, Td, Th } from "@/components/panel/ui";
+import { SubmitButton } from "@/components/panel/Cliente";
+import { Badge, Card, Field, Flash, SelectField, Tabla, Td, Th, TextArea } from "@/components/panel/ui";
+import { enviarComprobante } from "@/lib/actions/portal";
 import { dato, type Row } from "@/lib/api";
 import { portalUsuario } from "@/lib/auth";
 import { METODOS, fecha, hoy, money } from "@/lib/format";
@@ -7,7 +9,7 @@ export default async function MisPagos({ searchParams }: { searchParams: Promise
   const sp = await searchParams;
   const u = await portalUsuario();
   const h = hoy();
-  const { cuotas, pagos, comprobantes } = await dato<{ cuotas: Row[]; pagos: Row[]; comprobantes: Row[] }>("portalPagos");
+  const { cuotas, pagos, comprobantes, avisos } = await dato<{ cuotas: Row[]; pagos: Row[]; comprobantes: Row[]; avisos: Row[] }>("portalPagos");
 
   return (
     <>
@@ -31,6 +33,47 @@ export default async function MisPagos({ searchParams }: { searchParams: Promise
           </Tabla>
         </div>
         {cuotas.length > 0 && <p className="mt-6 text-sm text-ink-soft">Podés abonar en nuestra oficina (San Lorenzo 600, San Rafael) o consultarnos por otros medios de pago por WhatsApp. Los pagos pueden demorar hasta 48 hs en acreditarse.</p>}
+      </Card>
+
+      <Card title="Informar un pago / subir comprobante" className="mt-6">
+        <p className="mb-4 text-sm text-ink-soft">¿Pagaste por transferencia o depósito? Subí la foto o el PDF del comprobante. Lo revisamos, impactamos el pago y te emitimos el recibo.</p>
+        <form action={enviarComprobante} className="grid gap-4 sm:grid-cols-2">
+          <SelectField
+            label="¿Qué cuota pagaste?"
+            name="cuota_id"
+            vacio="Otro / no sé"
+            options={cuotas.map((c) => [String(c.id), `${c.compania} · Póliza ${c.poliza} · Cuota ${c.numero}/${c.cuotas_cant} · vence ${fecha(c.venc)} · ${money(c.importe)}`])}
+            className="sm:col-span-2"
+          />
+          <Field label="Importe pagado (ARS)" name="importe" placeholder="Ej: 33000" />
+          <Field label="Fecha del pago" name="fecha" type="date" defaultValue={h} />
+          <SelectField label="Forma de pago" name="metodo" defaultValue="transferencia" options={[["transferencia", "Transferencia"], ["efectivo", "Efectivo (en oficina)"], ["debito", "Débito"], ["credito", "Tarjeta de crédito"], ["mercadopago", "Mercado Pago"], ["otro", "Otro"]]} />
+          <Field label="Comprobante (foto o PDF, máx. 4 MB)" name="archivo" type="file" required accept=".pdf,.jpg,.jpeg,.png,.webp" />
+          <TextArea label="Comentario (opcional)" name="nota" rows={2} className="sm:col-span-2" />
+          <div className="sm:col-span-2"><SubmitButton variant="gold" pendiente="Enviando…">Enviar comprobante</SubmitButton></div>
+        </form>
+        {avisos.length > 0 && (
+          <div className="mt-6 border-t border-line pt-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-soft">Mis comprobantes enviados</p>
+            <ul className="divide-y divide-line">
+              {avisos.map((a) => (
+                <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
+                  <span>
+                    {a.importe ? <strong>{money(a.importe)}</strong> : "Comprobante"} · {fecha(a.fecha ?? a.creado)}
+                    <span className="block text-xs text-ink-soft">
+                      {a.poliza ? `${a.compania} · Póliza ${a.poliza}${a.cuota_n ? ` · Cuota ${a.cuota_n}/${a.cuotas_cant}` : ""}` : "Sin cuota indicada"}
+                      {a.documento_id && <> · <a className="underline" href={`/api/documento/${a.documento_id}`} target="_blank">ver archivo</a></>}
+                    </span>
+                    {a.estado === "rechazado" && a.motivo && <span className="block text-xs text-red-700">Motivo: {a.motivo}</span>}
+                  </span>
+                  {a.estado === "pendiente" && <Badge tono="ambar">En revisión</Badge>}
+                  {a.estado === "confirmado" && <Badge tono="verde">Confirmado</Badge>}
+                  {a.estado === "rechazado" && <Badge tono="rojo">Rechazado</Badge>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </Card>
 
       <Card title="Historial de pagos" className="mt-6">

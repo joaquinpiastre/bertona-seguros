@@ -326,6 +326,14 @@ export async function registrarPago(fd: FormData) {
   );
   const pagoId = r!.id as number;
   await recalcularCuota(cuotaId);
+  const avisoId = Number(txt(fd, "aviso_id")) || null;
+  if (avisoId) {
+    const av = await q1("SELECT documento_id FROM avisos_pago WHERE id = $1 AND cliente_id = $2 AND estado = 'pendiente'", [avisoId, clienteId]);
+    if (av) {
+      await q("UPDATE avisos_pago SET estado = 'confirmado', pago_id = $2 WHERE id = $1", [avisoId, pagoId]);
+      if (av.documento_id) await q("UPDATE documentos SET pago_id = $2, poliza_id = COALESCE(poliza_id, $3) WHERE id = $1", [av.documento_id, pagoId, polizaId]);
+    }
+  }
   if (comprobante) await guardarDoc(comprobante, { cliente_id: clienteId!, poliza_id: polizaId, pago_id: pagoId, tipo: "comprobante", subido_por: yo.id });
   if (reciboPropio) await guardarDoc(reciboPropio, { cliente_id: clienteId!, poliza_id: polizaId, pago_id: pagoId, tipo: "recibo", subido_por: yo.id });
   ir(`/admin/pagos/${pagoId}`, "ok", "Cobro registrado y recibo emitido.");
@@ -356,4 +364,24 @@ export async function subirArchivoPago(fd: FormData) {
   if (!a) ir(volver, "error", "Elegí un archivo.");
   await guardarDoc(a!, { cliente_id: p!.cliente_id, poliza_id: p!.poliza_id, pago_id: id, tipo, subido_por: yo.id });
   ir(volver, "ok", "Archivo cargado.");
+}
+
+export async function rechazarAviso(fd: FormData) {
+  await requireAdmin();
+  const id = Number(txt(fd, "id"));
+  const motivo = txt(fd, "motivo");
+  if (motivo.length < 3) ir("/admin/comprobantes", "error", "Indicá el motivo del rechazo (el cliente lo va a ver).");
+  await q("UPDATE avisos_pago SET estado = 'rechazado', motivo = $2 WHERE id = $1 AND estado = 'pendiente'", [id, motivo]);
+  ir("/admin/comprobantes", "ok", "Comprobante rechazado. El cliente verá el motivo.");
+}
+
+/** Borra por completo un cliente y todo lo suyo (pólizas, cuotas, pagos, archivos, acceso). */
+export async function eliminarCliente(fd: FormData) {
+  await requireAdmin();
+  const id = Number(txt(fd, "id"));
+  const volver = `/admin/clientes/${id}`;
+  if (txt(fd, "confirmar") !== "ELIMINAR") ir(volver, "error", 'Para eliminar escribí exactamente "ELIMINAR".');
+  await q("DELETE FROM pagos WHERE cliente_id = $1", [id]);
+  await q("DELETE FROM clientes WHERE id = $1", [id]);
+  ir("/admin/clientes", "ok", "Cliente eliminado definitivamente.");
 }

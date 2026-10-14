@@ -8,9 +8,9 @@ type SP = Promise<{ ok?: string; error?: string }>;
 export default async function Resumen({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const h = hoy();
-  const { mes, dia, venc, prox, polizas, porVencer, clientes, hoyMetodos, vencidas, proximas, ultimos } = await dato<{
+  const { mes, dia, venc, prox, polizas, porVencer, clientes, hoyMetodos, vencidas, proximas, ultimos, avisos } = await dato<{
     mes: Row; dia: Row; venc: Row; prox: Row; polizas: Row; porVencer: Row; clientes: Row;
-    hoyMetodos: Row[]; vencidas: Row[]; proximas: Row[]; ultimos: Row[];
+    hoyMetodos: Row[]; vencidas: Row[]; proximas: Row[]; ultimos: Row[]; avisos: Row;
   }>("resumen");
 
   const filaCuota = (c: (typeof vencidas)[number], vencida: boolean) => (
@@ -35,6 +35,12 @@ export default async function Resumen({ searchParams }: { searchParams: SP }) {
         actions={<><LinkBtn variant="gold" href="/admin/pagos/nuevo">Registrar cobro</LinkBtn><LinkBtn href="/admin/polizas/nueva">Nueva póliza</LinkBtn><LinkBtn href="/admin/clientes/nuevo">Nuevo cliente</LinkBtn></>}
       />
       <Flash sp={sp} />
+      {avisos.n > 0 && (
+        <Link href="/admin/comprobantes" className="mb-6 flex items-center justify-between border-l-4 border-accent-500 bg-accent-300/20 px-4 py-3 text-sm text-brand-900 hover:bg-accent-300/30">
+          <span><strong>{avisos.n} comprobante{avisos.n > 1 ? "s" : ""} de clientes para revisar.</strong> Confirmalos para emitir el recibo.</span>
+          <span className="font-semibold">Revisar →</span>
+        </Link>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Cobrado hoy" value={money(dia!.t)} sub={`${dia!.n} pago${dia!.n === 1 ? "" : "s"}`} tono="verde" />

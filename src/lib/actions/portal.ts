@@ -21,3 +21,7 @@ export async function cambiarPassword(fd: FormData) {
   await accion("cambiarPassword", fd);
 }
 
+
+export async function enviarComprobante(fd: FormData) {
+  await accion("enviarComprobante", fd);
+}

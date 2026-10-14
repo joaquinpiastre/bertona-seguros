@@ -4,15 +4,15 @@ import { Card, Flash, PageHead, SelectField, btnPrimary } from "@/components/pan
 import { registrarPago } from "@/lib/actions/admin";
 import { METODOS, hoy } from "@/lib/format";
 
-type SP = Promise<{ ok?: string; error?: string; cliente?: string; cuota?: string }>;
+type SP = Promise<{ ok?: string; error?: string; cliente?: string; cuota?: string; aviso?: string }>;
 
 export default async function NuevoCobro({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const h = hoy();
   const cuotaId = Number(sp.cuota) || 0;
-  const { clienteId, clientes, cliente, cuotas, polizas } = await dato<{
-    clienteId: number; clientes: Row[]; cliente: Row | null; cuotas: Row[]; polizas: Row[];
-  }>("pagosNuevo", { cliente: sp.cliente, cuota: sp.cuota });
+  const { clienteId, clientes, cliente, cuotas, polizas, aviso } = await dato<{
+    clienteId: number; clientes: Row[]; cliente: Row | null; cuotas: Row[]; polizas: Row[]; aviso: Row | null;
+  }>("pagosNuevo", { cliente: sp.cliente, cuota: sp.cuota, aviso: sp.aviso });
 
   return (
     <>
@@ -33,7 +33,8 @@ export default async function NuevoCobro({ searchParams }: { searchParams: SP })
             hoy={h}
             metodos={Object.entries(METODOS)}
             polizas={polizas.map((p) => ({ id: p.id, label: `${p.compania} · ${p.numero}` }))}
-            cuotaInicial={cuotaId || undefined}
+            cuotaInicial={cuotaId || (aviso?.cuota_id as number | undefined) || undefined}
+            aviso={aviso as never}
             cuotas={cuotas.map((c) => ({ id: c.id, poliza: c.poliza, compania: c.compania, dominio: c.dominio, numero: c.numero, total: c.total, vencimiento: c.vencimiento, importe: c.importe, vencida: c.vencimiento < h }))}
           />
         </Card>

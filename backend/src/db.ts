@@ -136,6 +136,23 @@ CREATE TABLE IF NOT EXISTS documentos (
   creado TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS avisos_pago (
+  id SERIAL PRIMARY KEY,
+  cliente_id INT NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+  poliza_id INT REFERENCES polizas(id) ON DELETE SET NULL,
+  cuota_id INT REFERENCES cuotas(id) ON DELETE SET NULL,
+  importe NUMERIC(14,2),
+  fecha DATE,
+  metodo TEXT,
+  nota TEXT,
+  documento_id INT REFERENCES documentos(id) ON DELETE SET NULL,
+  estado TEXT NOT NULL DEFAULT 'pendiente',
+  motivo TEXT,
+  pago_id INT REFERENCES pagos(id) ON DELETE SET NULL,
+  creado TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_avisos_estado ON avisos_pago(estado);
 CREATE INDEX IF NOT EXISTS idx_polizas_cliente ON polizas(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_cuotas_poliza ON cuotas(poliza_id);
 CREATE INDEX IF NOT EXISTS idx_cuotas_venc ON cuotas(vencimiento) WHERE estado = 'pendiente';
