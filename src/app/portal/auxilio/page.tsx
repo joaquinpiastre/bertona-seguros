@@ -1,3 +1,4 @@
+import { Icono } from "@/components/panel/Iconos";
 import { Card } from "@/components/panel/ui";
 import { waLink } from "@/config/empresa";
 import { dato } from "@/lib/api";
@@ -11,47 +12,52 @@ export default async function Auxilio() {
     .map((l) => l.split("|").map((x) => x.trim()))
     .filter((c) => c[0]);
   const tel = cfg.auxilio_telefono?.trim();
-  const sinDatos = !tel && !cfg.auxilio_texto?.trim() && planes.length === 0;
+  const wa = cfg.auxilio_whatsapp?.trim();
+  const waUrl = wa ? `https://wa.me/${wa.replace(/\D/g, "")}?text=${encodeURIComponent("Hola! Necesito auxilio mecánico. Mi número de póliza es: ")}` : "";
+  const sinDatos = !tel && !wa && !cfg.auxilio_texto?.trim() && planes.length === 0;
 
   return (
     <>
-      <h1 className="text-2xl text-brand-900 sm:text-3xl">Auxilio mecánico</h1>
-      <p className="mb-6 mt-1 text-sm text-ink-soft">Asistencia en ruta para tu vehículo: llamá al número de abajo y te ayudamos.</p>
+      <h1 className="text-3xl text-brand-900">Auxilio mecánico</h1>
+      <p className="mb-6 mt-1 text-base text-ink-soft">Si te quedás en la ruta, pedí ayuda desde acá. Funciona todos los días, a toda hora.</p>
 
       {sinDatos ? (
         <Card>
-          <p className="text-sm text-ink-soft">Estamos preparando la información de tu auxilio mecánico. Mientras tanto, consultanos por WhatsApp.</p>
-          <a href={waLink("Hola! Quiero saber cómo funciona el auxilio mecánico de mi seguro.")} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-[#1fa855] px-5 py-3 font-semibold text-white hover:bg-[#188a45]">Consultar por WhatsApp</a>
+          <p className="text-base text-ink-soft">Estamos preparando la información de tu auxilio mecánico. Mientras tanto, consultanos por WhatsApp.</p>
+          <a href={waLink("Hola! Quiero saber cómo funciona el auxilio mecánico de mi seguro.")} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-[#1fa855] px-6 py-4 text-lg font-bold text-white hover:bg-[#188a45]">Consultar por WhatsApp</a>
         </Card>
       ) : (
         <>
-          {tel && (
-            <section className="mb-6 border-2 border-accent-500 bg-white p-6 text-center sm:text-left">
-              <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">Llamá sin cargo</p>
-              <a href={`tel:${tel.replace(/[^\d+]/g, "")}`} className="mt-1 block font-display text-4xl font-bold tracking-wide text-brand-900 sm:text-5xl">{tel}</a>
-            </section>
-          )}
+          <div className="mb-6 grid gap-4 sm:grid-cols-2">
+            {waUrl && (
+              <a href={waUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-[#1fa855] p-5 text-white transition hover:bg-[#188a45]">
+                <Icono n="ayuda" className="h-12 w-12 shrink-0" />
+                <span><strong className="block font-display text-2xl">Pedir auxilio por WhatsApp</strong><span className="text-base opacity-95">{wa}</span></span>
+              </a>
+            )}
+            {tel && (
+              <a href={`tel:${tel.replace(/[^\d+]/g, "")}`} className="flex items-center gap-4 bg-brand-900 p-5 text-white transition hover:bg-brand-700">
+                <Icono n="telefono" className="h-12 w-12 shrink-0" />
+                <span><strong className="block font-display text-2xl">Llamar sin cargo</strong><span className="text-base opacity-95">{tel} · atención al cliente</span></span>
+              </a>
+            )}
+          </div>
           {cfg.auxilio_texto?.trim() && (
             <Card title="Cómo funciona">
-              <p className="whitespace-pre-line text-sm leading-relaxed text-ink">{cfg.auxilio_texto}</p>
+              <p className="whitespace-pre-line text-base leading-relaxed text-ink">{cfg.auxilio_texto}</p>
             </Card>
           )}
           {planes.length > 0 && (
-            <Card title="Planes y kilómetros" className="mt-6">
-              <div className="-m-5 overflow-x-auto">
-                <table className="w-full min-w-[420px] text-sm">
-                  <thead className="border-b border-line bg-soft"><tr>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-soft">Plan</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-soft">Kilómetros</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-soft">Detalle</th>
-                  </tr></thead>
-                  <tbody className="divide-y divide-line">
-                    {planes.map((c, i) => (
-                      <tr key={i}><td className="px-4 py-3 font-semibold text-brand-900">{c[0]}</td><td className="px-4 py-3">{c[1] ?? ""}</td><td className="px-4 py-3 text-ink-soft">{c[2] ?? ""}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <Card title="Cuántos servicios y kilómetros tenés" className="mt-6">
+              <p className="mb-4 text-base text-ink-soft">Depende de la cobertura de tu póliza.</p>
+              <ul className="divide-y divide-line border border-line">
+                {planes.map((c, i) => (
+                  <li key={i} className="p-4">
+                    <strong className="block text-lg text-brand-900">{c[0]}</strong>
+                    <span className="text-base text-ink-soft">{[c[1], c[2]].filter(Boolean).join(" · ")}</span>
+                  </li>
+                ))}
+              </ul>
             </Card>
           )}
         </>

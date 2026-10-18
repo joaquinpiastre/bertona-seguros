@@ -1,5 +1,7 @@
 import Image from "next/image";
 import { RAMOS, waLink } from "@/config/empresa";
+import { DETALLES } from "@/config/meridional";
+import Link from "next/link";
 import { IMG_RAMO } from "@/config/imagenes";
 import { ArrowIcon, RAMO_ICONS } from "./Icons";
 import { Reveal } from "./Reveal";
@@ -27,9 +29,12 @@ export function Seguros() {
                       {r.nombre}
                     </h3>
                     <p className="mt-3 flex-1 text-[0.95rem] leading-relaxed text-ink-soft">{r.descripcion}</p>
+                    {DETALLES.some((d) => d.slug === r.id) && (
+                      <Link href={`/seguros/${r.id}`} className="mt-5 text-sm font-semibold text-brand-700 underline underline-offset-4 hover:text-brand-900">Ver coberturas y planes</Link>
+                    )}
                     <a href={waLink(`Hola! Quiero cotizar un seguro de ${r.nombre}.`)} target="_blank" rel="noopener noreferrer"
                       aria-label={`Cotizar seguro de ${r.nombre}`}
-                      className="mt-6 flex items-center justify-between border-t border-line pt-4 text-sm font-semibold text-brand-700 transition hover:text-brand-900">
+                      className="mt-4 flex items-center justify-between border-t border-line pt-4 text-sm font-semibold text-brand-700 transition hover:text-brand-900">
                       Cotizar <ArrowIcon className="h-4 w-4 transition group-hover:translate-x-1" />
                     </a>
                   </div>
@@ -38,6 +43,9 @@ export function Seguros() {
             );
           })}
         </div>
+        <p className="mt-8 text-center text-sm text-ink-soft">
+          También te asesoramos sobre seguros de viaje, embarcaciones de placer, garantía extendida, consorcios, transporte de mercaderías, vida colectivo y sepelios.
+        </p>
       </div>
     </section>
   );

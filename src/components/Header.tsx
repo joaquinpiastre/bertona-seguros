@@ -5,11 +5,11 @@ import { CloseIcon, MailIcon, MenuIcon, PhoneIcon, PinIcon, WhatsAppIcon } from 
 import { Logo } from "./Logo";
 
 const LINKS = [
-  { href: "#inicio", label: "Inicio" },
-  { href: "#seguros", label: "Seguros" },
-  { href: "#nosotros", label: "Nosotros" },
-  { href: "#por-que-elegirnos", label: "Por qué elegirnos" },
-  { href: "#contacto", label: "Contacto" },
+  { href: "/", label: "Inicio" },
+  { href: "/#seguros", label: "Seguros" },
+  { href: "/ayuda", label: "Ayuda al cliente" },
+  { href: "/#nosotros", label: "Nosotros" },
+  { href: "/#contacto", label: "Contacto" },
 ];
 
 export function Header() {
@@ -36,7 +36,7 @@ export function Header() {
       </div>
       <div className={`border-b border-line bg-white transition-shadow ${scrolled || open ? "shadow-soft" : ""}`}>
         <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-4 sm:px-6">
-          <a href="#inicio" aria-label="Bertona Seguros, ir al inicio"><Logo /></a>
+          <a href="/" aria-label="Bertona Seguros, ir al inicio"><Logo /></a>
           <nav aria-label="Principal" className="hidden items-center gap-8 lg:flex">
             {LINKS.map((l) => (
               <a key={l.href} href={l.href} className="border-b-2 border-transparent py-2 text-sm font-medium text-ink transition hover:border-accent-500 hover:text-brand-700">

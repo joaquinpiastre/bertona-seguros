@@ -1,4 +1,5 @@
 import { FAQ } from "@/config/empresa";
+import { FAQ_MERIDIONAL } from "@/config/meridional";
 import { PlusIcon } from "./Icons";
 import { SectionTitle } from "./Section";
 
@@ -8,7 +9,7 @@ export function Faq() {
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
         <SectionTitle eyebrow="Preguntas frecuentes" title="Resolvemos tus dudas" />
         <div className="border-t border-line">
-          {FAQ.map((f) => (
+          {[...FAQ, ...FAQ_MERIDIONAL].map((f) => (
             <details key={f.q} className="group border-b border-line">
               <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 py-4 text-left font-display text-lg font-semibold text-brand-900 [&::-webkit-details-marker]:hidden">
                 {f.q}

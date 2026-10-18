@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { DIRECCION_COMPLETA, EMPRESA, HORARIOS, MAPS_EMBED_URL, RAMOS, waLink } from "@/config/empresa";
+import { MERIDIONAL } from "@/config/meridional";
 import { ClockIcon, FacebookIcon, InstagramIcon, MailIcon, PhoneIcon, PinIcon, WhatsAppIcon } from "./Icons";
 import { SectionTitle } from "./Section";
 
@@ -69,6 +70,15 @@ export function Contacto() {
                 <a href={EMPRESA.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram de Bertona Seguros" className="grid h-11 w-11 place-items-center border border-line text-brand-700 transition hover:bg-brand-700 hover:text-white"><InstagramIcon className="h-5 w-5" /></a>
               </li>
             </ul>
+            <div className="border border-line bg-brand-50 p-5 text-sm">
+              <p className="font-display text-lg font-semibold text-brand-900">Líneas de Meridional Seguros</p>
+              <ul className="mt-3 space-y-2 text-ink-soft">
+                <li><strong className="text-brand-900">Atención al cliente y siniestros:</strong> <a className="underline" href={`tel:${MERIDIONAL.telClientesTel}`}>{MERIDIONAL.telClientes}</a> (opción 2 si hubo lesionados)</li>
+                <li><strong className="text-brand-900">WhatsApp 24 hs:</strong> <a className="underline" href={MERIDIONAL.whatsappLink} target="_blank" rel="noopener noreferrer">{MERIDIONAL.whatsapp}</a></li>
+                <li><strong className="text-brand-900">Reclamos:</strong> Servicio de Atención al Asegurado {MERIDIONAL.telReclamos}</li>
+                <li><strong className="text-brand-900">Superintendencia de Seguros:</strong> {MERIDIONAL.telSSN}</li>
+              </ul>
+            </div>
             <div className="overflow-hidden border border-line">
               <iframe title={`Mapa: ${DIRECCION_COMPLETA}`} src={MAPS_EMBED_URL} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="h-64 w-full border-0" />
             </div>

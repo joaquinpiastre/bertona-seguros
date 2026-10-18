@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { dato, type Row } from "@/lib/api";
+import { Icono } from "@/components/panel/Iconos";
 import { Badge, Card, Flash, LinkBtn, PageHead, Stat, Tabla, Td, Th } from "@/components/panel/ui";
 import { METODOS, fecha, hoy, money, sumarDias } from "@/lib/format";
 
@@ -29,25 +30,37 @@ export default async function Resumen({ searchParams }: { searchParams: SP }) {
 
   return (
     <>
-      <PageHead
-        title="Resumen"
-        sub={`Hoy es ${fecha(h)}`}
-        actions={<><LinkBtn variant="gold" href="/admin/pagos/nuevo">Registrar cobro</LinkBtn><LinkBtn href="/admin/polizas/nueva">Nueva póliza</LinkBtn><LinkBtn href="/admin/clientes/nuevo">Nuevo cliente</LinkBtn></>}
-      />
+      <PageHead title="Inicio" sub={`Hoy es ${fecha(h)}`} actions={<><LinkBtn variant="gold" href="/admin/pagos/nuevo">Registrar cobro</LinkBtn><LinkBtn href="/admin/clientes/nuevo">Nuevo cliente</LinkBtn><LinkBtn href="/admin/polizas/nueva">Nueva póliza</LinkBtn></>} />
       <Flash sp={sp} />
-      {alertas.n > 0 && (
-        <Link href="/admin/alertas" className="mb-3 flex items-center justify-between border-l-4 border-red-600 bg-red-50 px-4 py-3 text-sm text-red-900 hover:bg-red-100">
-          <span><strong>{alertas.n} aviso{alertas.n > 1 ? "s" : ""} sin resolver:</strong> pedidos de clientes, pólizas vencidas, pagos completos y más.</span>
-          <span className="font-semibold">Ver avisos →</span>
-        </Link>
-      )}
-      {avisos.n > 0 && (
-        <Link href="/admin/comprobantes" className="mb-6 flex items-center justify-between border-l-4 border-accent-500 bg-accent-300/20 px-4 py-3 text-sm text-brand-900 hover:bg-accent-300/30">
-          <span><strong>{avisos.n} pago{avisos.n > 1 ? "s" : ""} informado{avisos.n > 1 ? "s" : ""} por clientes para aprobar o rechazar.</strong></span>
-          <span className="font-semibold">Revisar →</span>
-        </Link>
-      )}
 
+      <form action="/admin/clientes" className="mb-6 flex gap-2">
+        <label className="sr-only" htmlFor="buscar">Buscar cliente</label>
+        <input id="buscar" name="q" placeholder="Buscar un cliente por nombre, DNI, patente o póliza" className="min-h-14 w-full border-2 border-line bg-white px-4 text-base hover:border-brand-200 focus:border-brand-500" />
+        <button className="inline-flex min-h-14 items-center gap-2 bg-brand-900 px-6 text-base font-semibold text-white hover:bg-brand-700"><Icono n="buscar" className="h-5 w-5" />Buscar</button>
+      </form>
+
+      <h2 className="mb-3 text-xl text-brand-900">Para hacer hoy</h2>
+      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { href: "/admin/comprobantes", n: avisos.n, titulo: "Pagos para aprobar", ok: "Ninguno pendiente", icono: "inforpago" as const, tono: "gold" },
+          { href: "/admin/vencimientos?vista=vencidas", n: venc.n, titulo: "Cuotas vencidas", ok: "Todo al día", icono: "vencimientos" as const, tono: "red", sub: venc.n ? money(venc.t) : "" },
+          { href: "/admin/vencimientos?vista=proximas", n: prox.n, titulo: "Vencen en 7 días", ok: "Ninguna por vencer", icono: "vencimientos" as const, tono: "plain", sub: prox.n ? money(prox.t) : "" },
+          { href: "/admin/alertas", n: alertas.n, titulo: "Avisos sin resolver", ok: "Sin avisos", icono: "aviso" as const, tono: "red" },
+        ].map((c) => (
+          <Link key={c.titulo} href={c.href} className={`group flex flex-col justify-between gap-3 border-2 bg-white p-5 transition hover:shadow-lift ${c.n > 0 ? (c.tono === "gold" ? "border-accent-500" : c.tono === "red" ? "border-red-300" : "border-brand-200") : "border-line"}`}>
+            <span className="flex items-center justify-between">
+              <span className={`grid h-12 w-12 place-items-center ${c.n > 0 ? "bg-brand-900 text-white" : "bg-emerald-50 text-emerald-700"}`}><Icono n={c.icono} className="h-7 w-7" /></span>
+              <span className={`font-display text-5xl font-semibold ${c.n > 0 ? "text-brand-900" : "text-emerald-700"}`}>{c.n}</span>
+            </span>
+            <span>
+              <strong className="block text-lg text-brand-900">{c.titulo}</strong>
+              <span className="text-sm text-ink-soft">{c.n > 0 ? (c.sub ? `${c.sub} · tocá para verlas` : "Tocá para verlos") : c.ok}</span>
+            </span>
+          </Link>
+        ))}
+      </div>
+
+      <h2 className="mb-3 text-xl text-brand-900">Cómo viene el negocio</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Cobrado hoy" value={money(dia!.t)} sub={`${dia!.n} pago${dia!.n === 1 ? "" : "s"}`} tono="verde" />
         <Stat label="Cobrado en el mes" value={money(mes!.t)} sub={`${mes!.n} pago${mes!.n === 1 ? "" : "s"}`} />

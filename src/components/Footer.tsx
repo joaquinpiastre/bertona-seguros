@@ -1,5 +1,6 @@
 import { DIRECCION_COMPLETA, EMPRESA, MATRICULA_SSN, PRODUCTOR, SSN_TELEFONO } from "@/config/empresa";
 import { CREDITOS } from "@/config/imagenes";
+import { MERIDIONAL } from "@/config/meridional";
 import Image from "next/image";
 import { FacebookIcon, InstagramIcon } from "./Icons";
 import { Logo } from "./Logo";
@@ -34,7 +35,7 @@ export function Footer() {
           </p>
           <p>
             Las coberturas, condiciones y primas dependen de cada aseguradora. Los contenidos de este sitio son informativos y no constituyen una oferta vinculante.
-            La Superintendencia de Seguros de la Nación es el organismo de control: www.argentina.gob.ar/ssn · Atención al asegurado: {SSN_TELEFONO}.
+            Compañía aseguradora: {MERIDIONAL.nombre} (inscripción SSN N° {MERIDIONAL.inscripcionSSN}). La Superintendencia de Seguros de la Nación es el organismo de control: www.argentina.gob.ar/ssn · Atención al asegurado: {SSN_TELEFONO}.
           </p>
           <p>Créditos de imágenes: {CREDITOS.join(" ")}</p>
           <p>© {new Date().getFullYear()} Bertona Seguros. Todos los derechos reservados.</p>

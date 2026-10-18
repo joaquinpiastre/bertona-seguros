@@ -182,7 +182,7 @@ export const DATOS2: Record<string, (sp: SP) => Promise<unknown>> = {
 
   async configuracion() {
     await requireAdmin();
-    return { cfg: await getConfigs(["dias_gracia", "auxilio_telefono", "auxilio_texto", "auxilio_planes", "mp_instrucciones"]) };
+    return { cfg: await getConfigs(["dias_gracia", "auxilio_telefono", "auxilio_whatsapp", "auxilio_texto", "auxilio_planes", "mp_instrucciones"]) };
   },
 
   // ───────── Portal del cliente ─────────
@@ -350,7 +350,7 @@ export const DATOS2: Record<string, (sp: SP) => Promise<unknown>> = {
 
   async portalAuxilio() {
     await portalUsuario();
-    return { cfg: await getConfigs(["auxilio_telefono", "auxilio_texto", "auxilio_planes"]) };
+    return { cfg: await getConfigs(["auxilio_telefono", "auxilio_whatsapp", "auxilio_texto", "auxilio_planes"]) };
   },
 
   async portalPerfil() {

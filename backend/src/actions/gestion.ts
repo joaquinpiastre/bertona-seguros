@@ -90,7 +90,7 @@ export async function guardarConfig(fd: FormData) {
   const dias = Math.round(num(fd, "dias_gracia"));
   if (!(dias >= 0 && dias <= 365)) ir("/admin/configuracion", "error", "Los días de gracia deben estar entre 0 y 365.");
   await setConfig("dias_gracia", String(dias));
-  for (const k of ["auxilio_telefono", "auxilio_texto", "auxilio_planes", "mp_instrucciones"]) await setConfig(k, txt(fd, k));
+  for (const k of ["auxilio_telefono", "auxilio_whatsapp", "auxilio_texto", "auxilio_planes", "mp_instrucciones"]) await setConfig(k, txt(fd, k));
   ir("/admin/configuracion", "ok", "Configuración guardada.");
 }
 

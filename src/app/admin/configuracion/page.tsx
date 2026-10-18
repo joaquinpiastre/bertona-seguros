@@ -18,9 +18,10 @@ export default async function Configuracion({ searchParams }: { searchParams: Pr
           </div>
         </Card>
 
-        <Card title="Auxilio mecánico (lo que ve el cliente)">
+        <Card title="Auxilio mecánico (lo que ve el cliente; vino cargado con la información de Meridional)">
           <div className="grid gap-4">
-            <Field label="Teléfono 0800" name="auxilio_telefono" defaultValue={cfg.auxilio_telefono} placeholder="Ej: 0800-XXX-XXXX" className="max-w-sm" />
+            <Field label="WhatsApp del auxilio (con código de país)" name="auxilio_whatsapp" defaultValue={cfg.auxilio_whatsapp} placeholder="Ej: +54 9 11 6740 8247" className="max-w-sm" />
+            <Field label="Teléfono 0800" name="auxilio_telefono" defaultValue={cfg.auxilio_telefono} placeholder="Ej: 0800-333-3244" className="max-w-sm" />
             <TextArea label="Cómo funciona el auxilio mecánico" name="auxilio_texto" rows={7} defaultValue={cfg.auxilio_texto}
             />
             <TextArea label="Planes y kilómetros (uno por línea: Plan | Kilómetros | Detalle)" name="auxilio_planes" rows={6} defaultValue={cfg.auxilio_planes} />

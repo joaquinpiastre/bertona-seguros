@@ -63,3 +63,21 @@ h1, h2, h3 { font-family: var(--f-display), Georgia, serif; font-weight: 600; le
   html { scroll-behavior: auto; }
   .reveal { opacity: 1; transform: none; transition: none; }
 }
+
+/* ───────── Portal y panel: letra más grande y tablas que se vuelven tarjetas en el celular ───────── */
+html:has(.escala-panel) { font-size: 112.5%; }
+html[data-letra="grande"]:has(.escala-panel) { font-size: 128%; }
+.escala-panel input, .escala-panel select, .escala-panel textarea { font-size: 1rem; }
+
+@media (max-width: 639px) {
+  .tabla-movil table { min-width: 0 !important; }
+  .tabla-movil thead { display: none; }
+  .tabla-movil table, .tabla-movil tbody, .tabla-movil tr, .tabla-movil td { display: block; width: 100%; }
+  .tabla-movil tbody { padding: 0.75rem; }
+  .tabla-movil tr { border: 1px solid var(--line); background: #fff; margin-bottom: 0.75rem; padding: 0.35rem 0.9rem; }
+  .tabla-movil td { display: flex; justify-content: space-between; align-items: center; gap: 1rem; text-align: right !important; padding: 0.55rem 0 !important; border-bottom: 1px dashed var(--line); }
+  .tabla-movil td:last-child { border-bottom: 0; }
+  .tabla-movil td:first-child { display: block; text-align: left !important; font-size: 1.05rem; padding: 0.65rem 0 !important; }
+  .tabla-movil td::before { flex: none; max-width: 42%; text-align: left; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+  .tabla-movil td:empty { display: none; }
+}

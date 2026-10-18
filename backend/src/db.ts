@@ -222,6 +222,38 @@ CREATE INDEX IF NOT EXISTS idx_docs_pago ON documentos(pago_id);
 
 async function inicializar(r: Runner) {
   await r.exec(SCHEMA);
+  // Contenido inicial del auxilio mecánico (información de Meridional Seguros). Se puede editar en Configuración.
+  const semillas: Record<string, string> = {
+    auxilio_telefono: "0800-333-3244",
+    auxilio_whatsapp: "+54 9 11 6740 8247",
+    auxilio_texto: [
+      "El servicio funciona las 24 horas, los 365 días del año.",
+      "",
+      "Cómo se pide:",
+      "1. Escribí por WhatsApp o llamá al número de atención al cliente.",
+      "2. Tené a mano el número de tu póliza, el nombre del titular, los datos del vehículo y un teléfono de contacto.",
+      "3. Si querés reintegro de algún gasto, la central tiene que autorizarlo antes; después presentás las facturas originales.",
+      "",
+      "Tené en cuenta:",
+      "- Hasta 2 servicios por mes.",
+      "- No incluye segundos traslados ni remolques de taller a taller.",
+      "- Si el vehículo lleva mercadería, hay que descargarla antes del remolque.",
+      "- Los repuestos que necesite la reparación los paga el asegurado.",
+      "- Los kilómetros gratuitos dependen de la cobertura que contrataste: mirá tu póliza.",
+      "",
+      "Asistencia al viajero (seguros de automotor): asistencia médica de urgencia por accidente, alojamiento o traslado si el vehículo queda inmovilizado, asistencia legal por accidente en el exterior y acompañamiento de menores.",
+    ].join("\n"),
+    auxilio_planes: [
+      "Responsabilidad civil | 8 servicios por año | hasta 100 km lineales (200 km en total)",
+      "Incendio y robo total | 8 servicios por año | hasta 100 km lineales (200 km en total)",
+      "Resto de las coberturas | 8 servicios por año | hasta 100 km lineales (200 km en total)",
+      "Clientes Gold | 6 servicios por año | hasta 200 km lineales (400 km en total)",
+      "Clientes Gold (otra opción) | 2 servicios por año | hasta 400 km lineales (800 km en total)",
+    ].join("\n"),
+  };
+  for (const [k, v] of Object.entries(semillas)) {
+    await r.query("INSERT INTO config (clave, valor) VALUES ($1, $2) ON CONFLICT (clave) DO NOTHING", [k, v]);
+  }
   // Clientes que ya tenían usuario: su DNI pasa a ser el usuario de ingreso.
   try {
     await r.query(

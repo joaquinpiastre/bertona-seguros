@@ -1,14 +1,14 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Children, isValidElement, useId, type ReactNode } from "react";
 
-export const btn = "inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold transition disabled:opacity-60";
+export const btn = "inline-flex min-h-12 items-center justify-center gap-2 px-5 py-3 text-base font-semibold transition disabled:opacity-60";
 export const btnPrimary = `${btn} bg-brand-900 text-white hover:bg-brand-700`;
 export const btnGold = `${btn} bg-accent-500 text-brand-900 hover:bg-accent-400`;
 export const btnGhost = `${btn} border border-line bg-white text-brand-800 hover:border-brand-500 hover:text-brand-900`;
 export const btnDanger = `${btn} border border-red-200 bg-white text-red-700 hover:bg-red-50`;
-export const btnSm = "!px-3 !py-1.5 !text-xs";
+export const btnSm = "!min-h-10 !px-3.5 !py-2 !text-sm";
 export const inputCls =
-  "mt-1.5 w-full border border-line bg-white px-3 py-2.5 text-sm text-ink placeholder:text-ink-soft/60 hover:border-brand-200 focus:border-brand-500";
+  "mt-1.5 w-full border border-line bg-white px-4 py-3 text-base text-ink placeholder:text-ink-soft/60 hover:border-brand-200 focus:border-brand-500";
 
 export function Flash({ sp }: { sp: { ok?: string; error?: string } }) {
   if (!sp.ok && !sp.error) return null;
@@ -89,7 +89,7 @@ type FieldProps = {
 };
 export function Field({ label, name, type = "text", defaultValue, required, placeholder, hint, className = "", ...rest }: FieldProps) {
   return (
-    <label className={`block text-sm font-semibold text-brand-900 ${className}`}>
+    <label className={`block text-base font-semibold text-brand-900 ${className}`}>
       {label}
       {required && <span className="text-red-600"> *</span>}
       <input
@@ -101,7 +101,7 @@ export function Field({ label, name, type = "text", defaultValue, required, plac
         className={`${inputCls} ${type === "file" ? "file:mr-3 file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-brand-700" : ""}`}
         {...rest}
       />
-      {hint && <span className="mt-1 block text-xs font-normal text-ink-soft">{hint}</span>}
+      {hint && <span className="mt-1 block text-sm font-normal text-ink-soft">{hint}</span>}
     </label>
   );
 }
@@ -112,7 +112,7 @@ export function SelectField({
   label: string; name: string; options: [string, string][]; defaultValue?: string | number | null; required?: boolean; className?: string; vacio?: string;
 }) {
   return (
-    <label className={`block text-sm font-semibold text-brand-900 ${className}`}>
+    <label className={`block text-base font-semibold text-brand-900 ${className}`}>
       {label}
       {required && <span className="text-red-600"> *</span>}
       <select name={name} required={required} defaultValue={defaultValue ?? ""} className={inputCls}>
@@ -127,7 +127,7 @@ export function SelectField({
 
 export function TextArea({ label, name, defaultValue, rows = 3, className = "" }: { label: string; name: string; defaultValue?: string | null; rows?: number; className?: string }) {
   return (
-    <label className={`block text-sm font-semibold text-brand-900 ${className}`}>
+    <label className={`block text-base font-semibold text-brand-900 ${className}`}>
       {label}
       <textarea name={name} rows={rows} defaultValue={defaultValue ?? undefined} className={inputCls} />
     </label>
@@ -141,17 +141,30 @@ export const Td = ({ children, right, className = "" }: { children?: ReactNode; 
   <td className={`px-4 py-3 align-middle ${right ? "text-right" : ""} ${className}`}>{children}</td>
 );
 
+function textoDe(n: ReactNode): string {
+  return Children.toArray(n).map((c) => (typeof c === "string" || typeof c === "number" ? String(c) : "")).join("").trim();
+}
+
+/** Tabla: en pantallas grandes es una tabla; en el celular cada fila se convierte en una tarjeta con sus etiquetas. */
 export function Tabla({ head, children, vacio }: { head: ReactNode; children: ReactNode; vacio?: string }) {
   const filas = Array.isArray(children) ? children.length : children ? 1 : 0;
+  const id = "tm" + useId().replace(/[^a-zA-Z0-9]/g, "");
+  const raiz = isValidElement(head) ? (head.props as { children?: ReactNode }).children : head;
+  const etiquetas = Children.toArray(raiz).map((e) => (isValidElement(e) ? textoDe((e.props as { children?: ReactNode }).children) : ""));
+  const css =
+    "@media (max-width:639px){" +
+    etiquetas.map((l, i) => `.${id} td:nth-child(${i + 1})::before{content:${l ? JSON.stringify(l) : "none"}}`).join("") +
+    `.${id} td:first-child::before{content:none}}`;
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] text-sm">
+    <div className={`tabla-movil ${id} overflow-x-auto`}>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
+      <table className="w-full min-w-[640px] text-[0.95rem]">
         <thead className="border-b border-line bg-soft">
           <tr>{head}</tr>
         </thead>
         <tbody className="divide-y divide-line">{children}</tbody>
       </table>
-      {filas === 0 && <p className="px-4 py-8 text-center text-sm text-ink-soft">{vacio ?? "Sin resultados."}</p>}
+      {filas === 0 && <p className="px-4 py-8 text-center text-base text-ink-soft">{vacio ?? "Sin resultados."}</p>}
     </div>
   );
 }

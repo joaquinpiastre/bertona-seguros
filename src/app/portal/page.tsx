@@ -1,16 +1,17 @@
 import Link from "next/link";
 import { PolizaBloqueada, botonPagar } from "@/components/panel/Bloqueo";
+import { Icono, type NombreIcono } from "@/components/panel/Iconos";
 import { Badge, Card, Flash, btnGhost } from "@/components/panel/ui";
 import { EMPRESA, waLink } from "@/config/empresa";
 import { dato, type Row } from "@/lib/api";
 import { portalUsuario } from "@/lib/auth";
 import { ESTADOS_POLIZA, fecha, hoy, money } from "@/lib/format";
 
-const ACCESOS = [
-  { href: "/portal/presentar", titulo: "Presentar documentación", texto: "Mostrá tu cobertura y descargá la póliza y el certificado." },
-  { href: "/portal/tramite", titulo: "Trámite", texto: "Cambiá los datos del vehículo, el dominio o la cobertura." },
-  { href: "/portal/siniestros", titulo: "Siniestros", texto: "Denunciá un siniestro y seguí su estado." },
-  { href: "/portal/auxilio", titulo: "Auxilio mecánico", texto: "Teléfono 0800 y cómo funciona tu asistencia." },
+const ACCESOS: { href: string; titulo: string; texto: string; icono: NombreIcono }[] = [
+  { href: "/portal/presentar", titulo: "Mis papeles", texto: "Mostrá tu seguro si te lo piden en la ruta", icono: "papeles" },
+  { href: "/portal/siniestros", titulo: "Tuve un siniestro", texto: "Choque, robo u otro problema: avisanos acá", icono: "siniestro" },
+  { href: "/portal/auxilio", titulo: "Auxilio mecánico", texto: "A quién llamar si te quedás en la ruta", icono: "auxilio" },
+  { href: "/portal/tramite", titulo: "Hacer un trámite", texto: "Cambiar el auto, la patente o la cobertura", icono: "tramite" },
 ];
 
 export default async function PortalInicio({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
@@ -68,9 +69,9 @@ export default async function PortalInicio({ searchParams }: { searchParams: Pro
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2">
         {ACCESOS.map((a) => (
-          <Link key={a.href} href={a.href} className="group border border-line bg-white p-5 transition hover:border-brand-500 hover:shadow-lift">
-            <p className="font-display text-lg font-semibold text-brand-900 group-hover:text-brand-700">{a.titulo} →</p>
-            <p className="mt-1 text-sm text-ink-soft">{a.texto}</p>
+          <Link key={a.href} href={a.href} className="group flex items-center gap-4 border border-line bg-white p-5 transition hover:border-brand-500 hover:shadow-lift">
+            <span className="grid h-16 w-16 shrink-0 place-items-center bg-brand-50 text-brand-700 group-hover:bg-brand-700 group-hover:text-white"><Icono n={a.icono} className="h-9 w-9" /></span>
+            <span><strong className="block font-display text-xl text-brand-900">{a.titulo}</strong><span className="text-base text-ink-soft">{a.texto}</span></span>
           </Link>
         ))}
       </div>
