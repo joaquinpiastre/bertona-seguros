@@ -6,7 +6,7 @@ import { Icono, type NombreIcono } from "./Iconos";
 const ITEMS: { href: string; label: string; icono: NombreIcono; exact?: boolean; extra?: string[] }[] = [
   { href: "/portal", label: "Inicio", icono: "inicio", exact: true },
   { href: "/portal/pagar", label: "Pagar", icono: "pagar" },
-  { href: "/portal/presentar", label: "Mis papeles", icono: "papeles" },
+  { href: "/portal/presentar", label: "Papeles", icono: "papeles" },
   { href: "/portal/siniestros", label: "Siniestro", icono: "siniestro" },
   { href: "/portal/mas", label: "Más", icono: "mas", extra: ["/portal/polizas", "/portal/pagos", "/portal/tramite", "/portal/auxilio", "/portal/contactos", "/portal/perfil", "/portal/anular"] },
 ];
