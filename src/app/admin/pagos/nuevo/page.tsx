@@ -2,7 +2,7 @@ import { CobroForm } from "@/components/panel/Cliente";
 import { dato, type Row } from "@/lib/api";
 import { Card, Flash, PageHead, SelectField, btnPrimary } from "@/components/panel/ui";
 import { registrarPago } from "@/lib/actions/admin";
-import { METODOS, hoy } from "@/lib/format";
+import { hoy } from "@/lib/format";
 
 type SP = Promise<{ ok?: string; error?: string; cliente?: string; cuota?: string; aviso?: string }>;
 
@@ -16,7 +16,7 @@ export default async function NuevoCobro({ searchParams }: { searchParams: SP })
 
   return (
     <>
-      <PageHead title="Registrar cobro" sub="Impactá pagos en efectivo, transferencia u otros medios y emití el recibo" />
+      <PageHead title="Registrar cobro" sub="Se registran pagos en efectivo o por Mercado Pago, con el importe de la cuota y la fecha de hoy" />
       <Flash sp={sp} />
       <Card title="1. Cliente" className="mb-6">
         <form method="get" className="flex flex-wrap items-end gap-3">
@@ -26,15 +26,11 @@ export default async function NuevoCobro({ searchParams }: { searchParams: SP })
       </Card>
       {cliente && (
         <Card title={`2. Cobro de ${cliente.nombre}`}>
-          {cuotas.length === 0 && <p className="mb-4 text-sm text-ink-soft">Este cliente no tiene cuotas pendientes. Podés registrar un pago a cuenta.</p>}
-          <CobroForm
+                    <CobroForm
             action={registrarPago}
             clienteId={cliente.id}
             hoy={h}
-            metodos={Object.entries(METODOS)}
-            polizas={polizas.map((p) => ({ id: p.id, label: `${p.compania} · ${p.numero}` }))}
-            cuotaInicial={cuotaId || (aviso?.cuota_id as number | undefined) || undefined}
-            aviso={aviso as never}
+            cuotaInicial={cuotaId || undefined}
             cuotas={cuotas.map((c) => ({ id: c.id, poliza: c.poliza, compania: c.compania, dominio: c.dominio, numero: c.numero, total: c.total, vencimiento: c.vencimiento, importe: c.importe, vencida: c.vencimiento < h }))}
           />
         </Card>

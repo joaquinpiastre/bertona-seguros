@@ -2,6 +2,7 @@ import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont } from "pdf-lib"
 import { DIRECCION_COMPLETA, EMPRESA, PRODUCTOR, RECIBO_LEGAL, SSN_TELEFONO, TELEFONO_COBRANZA } from "./empresa";
 import { fecha, money } from "./format";
 import { LOGO_B64 } from "./logo-b64";
+import { SSN_B64, SSN_RATIO } from "./ssn-b64";
 
 export type ReciboData = {
   nro: number;
@@ -62,6 +63,7 @@ export async function generarReciboPdf(d: ReciboData): Promise<Uint8Array> {
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const reg = await doc.embedFont(StandardFonts.Helvetica);
   const logo = await doc.embedPng(Buffer.from(LOGO_B64, "base64"));
+  const ssn = await doc.embedPng(Buffer.from(SSN_B64, "base64"));
   const Y = (top: number) => H - top;
   const M = 30;
 
@@ -79,10 +81,10 @@ export async function generarReciboPdf(d: ReciboData): Promise<Uint8Array> {
   page.drawText("ORGANIZACION", { x: M + 72, y: Y(92), size: 9, font: bold, color: NAVY });
   page.drawText("BERTONA", { x: M + 72, y: Y(110), size: 19, font: bold, color: NAVY });
   page.drawText("SEGUROS EN GENERAL", { x: M + 72, y: Y(124), size: 8.5, font: bold, color: NAVY });
-  const ssn1 = "Superintendencia de Seguros de la Nacion";
-  page.drawText(ssn1, { x: W / 2 - reg.widthOfTextAtSize(ssn1, 9) / 2, y: Y(100), size: 9, font: reg, color: INK });
-  const ssn2 = SSN_TELEFONO;
-  page.drawText(ssn2, { x: W / 2 - bold.widthOfTextAtSize(ssn2, 12) / 2, y: Y(116), size: 12, font: bold, color: NAVY });
+  const ssnW = 104;
+  page.drawImage(ssn, { x: W / 2 - ssnW - 6, y: Y(90 + ssnW * SSN_RATIO), width: ssnW, height: ssnW * SSN_RATIO });
+  page.drawText("Atencion al asegurado", { x: W / 2 + 6, y: Y(100), size: 8.5, font: reg, color: INK });
+  page.drawText(SSN_TELEFONO, { x: W / 2 + 6, y: Y(116), size: 14, font: bold, color: NAVY });
   const cob = `Consultas: ${EMPRESA.telefonoVisible}`;
   page.drawText(cob, { x: W - M - reg.widthOfTextAtSize(cob, 9), y: Y(100), size: 9, font: reg, color: INK });
 

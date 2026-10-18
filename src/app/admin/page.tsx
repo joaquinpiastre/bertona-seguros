@@ -8,9 +8,9 @@ type SP = Promise<{ ok?: string; error?: string }>;
 export default async function Resumen({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const h = hoy();
-  const { mes, dia, venc, prox, polizas, porVencer, clientes, hoyMetodos, vencidas, proximas, ultimos, avisos } = await dato<{
+  const { mes, dia, venc, prox, polizas, porVencer, clientes, hoyMetodos, vencidas, proximas, ultimos, avisos, alertas } = await dato<{
     mes: Row; dia: Row; venc: Row; prox: Row; polizas: Row; porVencer: Row; clientes: Row;
-    hoyMetodos: Row[]; vencidas: Row[]; proximas: Row[]; ultimos: Row[]; avisos: Row;
+    hoyMetodos: Row[]; vencidas: Row[]; proximas: Row[]; ultimos: Row[]; avisos: Row; alertas: Row;
   }>("resumen");
 
   const filaCuota = (c: (typeof vencidas)[number], vencida: boolean) => (
@@ -35,9 +35,15 @@ export default async function Resumen({ searchParams }: { searchParams: SP }) {
         actions={<><LinkBtn variant="gold" href="/admin/pagos/nuevo">Registrar cobro</LinkBtn><LinkBtn href="/admin/polizas/nueva">Nueva póliza</LinkBtn><LinkBtn href="/admin/clientes/nuevo">Nuevo cliente</LinkBtn></>}
       />
       <Flash sp={sp} />
+      {alertas.n > 0 && (
+        <Link href="/admin/alertas" className="mb-3 flex items-center justify-between border-l-4 border-red-600 bg-red-50 px-4 py-3 text-sm text-red-900 hover:bg-red-100">
+          <span><strong>{alertas.n} aviso{alertas.n > 1 ? "s" : ""} sin resolver:</strong> pedidos de clientes, pólizas vencidas, pagos completos y más.</span>
+          <span className="font-semibold">Ver avisos →</span>
+        </Link>
+      )}
       {avisos.n > 0 && (
         <Link href="/admin/comprobantes" className="mb-6 flex items-center justify-between border-l-4 border-accent-500 bg-accent-300/20 px-4 py-3 text-sm text-brand-900 hover:bg-accent-300/30">
-          <span><strong>{avisos.n} comprobante{avisos.n > 1 ? "s" : ""} de clientes para revisar.</strong> Confirmalos para emitir el recibo.</span>
+          <span><strong>{avisos.n} pago{avisos.n > 1 ? "s" : ""} informado{avisos.n > 1 ? "s" : ""} por clientes para aprobar o rechazar.</strong></span>
           <span className="font-semibold">Revisar →</span>
         </Link>
       )}
@@ -64,10 +70,10 @@ export default async function Resumen({ searchParams }: { searchParams: SP }) {
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <Card title="Cuotas vencidas" actions={<Link href="/admin/cobranzas?filtro=vencidas" className="text-sm font-semibold text-brand-700 hover:underline">Ver todas</Link>}>
+        <Card title="Cuotas vencidas" actions={<Link href="/admin/vencimientos?vista=vencidas" className="text-sm font-semibold text-brand-700 hover:underline">Ver todas</Link>}>
           <div className="-m-5"><Tabla head={head} vacio="No hay cuotas vencidas. ¡Todo al día!">{vencidas.map((c) => filaCuota(c, true))}</Tabla></div>
         </Card>
-        <Card title="Próximos vencimientos (7 días)" actions={<Link href="/admin/cobranzas?filtro=proximas" className="text-sm font-semibold text-brand-700 hover:underline">Ver todas</Link>}>
+        <Card title="Próximos vencimientos (7 días)" actions={<Link href="/admin/vencimientos?vista=proximas" className="text-sm font-semibold text-brand-700 hover:underline">Ver todas</Link>}>
           <div className="-m-5"><Tabla head={head} vacio="No hay vencimientos en los próximos 7 días.">{proximas.map((c) => filaCuota(c, false))}</Tabla></div>
         </Card>
       </div>

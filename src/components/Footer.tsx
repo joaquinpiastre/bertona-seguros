@@ -1,5 +1,6 @@
 import { DIRECCION_COMPLETA, EMPRESA, MATRICULA_SSN, PRODUCTOR, SSN_TELEFONO } from "@/config/empresa";
 import { CREDITOS } from "@/config/imagenes";
+import Image from "next/image";
 import { FacebookIcon, InstagramIcon } from "./Icons";
 import { Logo } from "./Logo";
 
@@ -27,6 +28,7 @@ export function Footer() {
           </div>
         </div>
         <div className="mt-10 space-y-2 border-t border-white/10 pt-6 text-xs leading-relaxed text-brand-200">
+          <div className="mb-3 inline-block bg-white px-3 py-2"><Image src="/brand/ssn.png" alt="Superintendencia de Seguros de la Nación" width={120} height={70} className="h-12 w-auto" /></div>
           <p>
             Productor Asesor de Seguros — {PRODUCTOR.nombre} — N° de matrícula SSN: {MATRICULA_SSN}.
           </p>

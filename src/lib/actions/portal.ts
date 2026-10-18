@@ -17,11 +17,23 @@ export async function actualizarPerfil(fd: FormData) {
   await accion("actualizarPerfil", fd);
 }
 
-export async function cambiarPassword(fd: FormData) {
-  await accion("cambiarPassword", fd);
+export async function configurarPin(fd: FormData) {
+  await accion("configurarPin", fd);
 }
 
-
-export async function enviarComprobante(fd: FormData) {
-  await accion("enviarComprobante", fd);
+export async function pagarCuota(fd: FormData) {
+  await accion("pagarCuota", fd);
 }
+
+export async function solicitarTramite(fd: FormData) {
+  await accion("solicitarTramite", fd);
+}
+
+export async function solicitarBaja(fd: FormData) {
+  await accion("solicitarBaja", fd);
+}
+
+export async function denunciarSiniestro(fd: FormData) {
+  await accion("denunciarSiniestro", fd);
+}
+

@@ -1,10 +1,12 @@
 import bcrypt from "bcryptjs";
-import { requireSocio } from "../auth";
+import { portalUsuario, requireSocio } from "../auth";
+import { leerArchivo, type Archivo } from "../archivos";
+import { bloqueoPoliza, crearAlerta, guardarDoc } from "../core";
 import { q, q1 } from "../db";
-import { leerArchivo } from "../archivos";
-import { ir, num, txt, txtONull } from "../flash";
-import { METODOS, esFecha } from "../format";
+import { ir, txt, txtONull } from "../flash";
+import { TIPOS_SINIESTRO, esFecha, hoy } from "../format";
 
+// ───────── Contactos de emergencia ─────────
 export async function crearContacto(fd: FormData) {
   const u = await requireSocio();
   const nombre = txt(fd, "nombre");
@@ -37,6 +39,7 @@ export async function eliminarContacto(fd: FormData) {
   ir("/portal/contactos", "ok", "Contacto eliminado.");
 }
 
+// ───────── Datos y clave opcional ─────────
 export async function actualizarPerfil(fd: FormData) {
   const u = await requireSocio();
   await q("UPDATE clientes SET telefono = $2, direccion = $3, localidad = $4 WHERE id = $1", [
@@ -45,57 +48,182 @@ export async function actualizarPerfil(fd: FormData) {
   ir("/portal/perfil", "ok", "Datos actualizados.");
 }
 
-export async function cambiarPassword(fd: FormData) {
+/** Clave opcional: el cliente puede agregar una clave numérica a su DNI, o quitarla. */
+export async function configurarPin(fd: FormData) {
   const u = await requireSocio();
-  const actual = String(fd.get("actual") ?? "");
-  const nueva = String(fd.get("nueva") ?? "");
-  const repetir = String(fd.get("repetir") ?? "");
-  const row = await q1("SELECT password_hash FROM usuarios WHERE id = $1", [u.id]);
-  if (!row || !(await bcrypt.compare(actual, row.password_hash))) ir("/portal/perfil", "error", "La contraseña actual no es correcta.");
-  if (nueva.length < 8) ir("/portal/perfil", "error", "La nueva contraseña debe tener al menos 8 caracteres.");
-  if (nueva !== repetir) ir("/portal/perfil", "error", "Las contraseñas nuevas no coinciden.");
-  await q("UPDATE usuarios SET password_hash = $2, debe_cambiar_password = FALSE WHERE id = $1", [u.id, await bcrypt.hash(nueva, 10)]);
-  ir("/portal/perfil", "ok", "Contraseña actualizada.");
+  if (txt(fd, "accion") === "quitar") {
+    await q("UPDATE usuarios SET pin_hash = NULL WHERE id = $1", [u.id]);
+    ir("/portal/perfil", "ok", "Quitaste la clave: volvés a ingresar solo con tu DNI.");
+  }
+  const pin = String(fd.get("pin") ?? "");
+  if (!/^\d{4,8}$/.test(pin)) ir("/portal/perfil", "error", "La clave debe tener entre 4 y 8 números.");
+  if (pin !== String(fd.get("repetir") ?? "")) ir("/portal/perfil", "error", "Las claves no coinciden.");
+  await q("UPDATE usuarios SET pin_hash = $2 WHERE id = $1", [u.id, await bcrypt.hash(pin, 10)]);
+  ir("/portal/perfil", "ok", "Listo: desde ahora vas a ingresar con tu DNI y esta clave.");
 }
 
-/** El socio informa un pago y adjunta el comprobante; el administrador lo revisa y lo impacta. */
-export async function enviarComprobante(fd: FormData) {
-  const u = await requireSocio();
-  const volver = "/portal/pagos";
+// ───────── Pagos ─────────
+/**
+ * El cliente informa que va a pagar (efectivo) o que ya pagó por Mercado Pago (con comprobante).
+ * El importe es el de la cuota y la fecha es la de hoy: no se pueden modificar. La empresa aprueba o rechaza.
+ */
+export async function pagarCuota(fd: FormData) {
+  const u = await portalUsuario();
+  const volver = "/portal/pagar";
   const cuotaId = Number(txt(fd, "cuota_id")) || null;
-  const metodo = txt(fd, "metodo") || "transferencia";
-  const fecha = txt(fd, "fecha");
-  const importe = num(fd, "importe");
-  if (!METODOS[metodo]) ir(volver, "error", "Elegí la forma de pago.");
-  if (fecha && !esFecha(fecha)) ir(volver, "error", "La fecha no es válida.");
-  let a;
+  const metodo = txt(fd, "metodo");
+  if (!["efectivo", "mercadopago"].includes(metodo)) ir(volver, "error", "Elegí cómo vas a pagar: efectivo o Mercado Pago.");
+  if (!cuotaId) ir(volver, "error", "Elegí la cuota que querés pagar.");
+  const c = await q1(
+    `SELECT c.estado, c.numero, c.importe::float8 AS importe, c.poliza_id, p.numero AS poliza, p.compania, p.cuotas_cant
+     FROM cuotas c JOIN polizas p ON p.id = c.poliza_id WHERE c.id = $1 AND p.cliente_id = $2`,
+    [cuotaId, u.cliente_id]
+  );
+  if (!c) ir(volver, "error", "La cuota elegida no existe.");
+  if (c!.estado !== "pendiente") ir(volver, "error", "Esa cuota ya figura paga.");
+  if (await bloqueoPoliza(c!.poliza_id)) ir(volver, "error", "Esta póliza está inhabilitada por falta de pago. Comunicate con la oficina.");
+  const abierto = await q1("SELECT 1 FROM avisos_pago WHERE cuota_id = $1 AND estado = 'pendiente'", [cuotaId]);
+  if (abierto) ir(volver, "error", "Ya informaste un pago de esta cuota: está en revisión.");
+
+  let a: Archivo | null = null;
   try {
     a = await leerArchivo(fd, "archivo");
   } catch (e) {
     ir(volver, "error", e instanceof Error ? e.message : "Archivo inválido.");
   }
-  if (!a) ir(volver, "error", "Adjuntá la foto o el PDF del comprobante.");
-  let polizaId: number | null = null;
-  if (cuotaId) {
-    const c = await q1(
-      "SELECT c.estado, c.poliza_id FROM cuotas c JOIN polizas p ON p.id = c.poliza_id WHERE c.id = $1 AND p.cliente_id = $2",
-      [cuotaId, u.cliente_id]
+  if (metodo === "mercadopago" && !a) ir(volver, "error", "Para pagos por Mercado Pago adjuntá el comprobante (captura o PDF).");
+
+  let docId: number | null = null;
+  if (a) {
+    const d = await q1(
+      `INSERT INTO documentos (cliente_id, poliza_id, tipo, nombre, mime, tamano, datos, subido_por)
+       VALUES ($1,$2,'comprobante',$3,$4,$5,$6,$7) RETURNING id`,
+      [u.cliente_id, c!.poliza_id, a.nombre, a.mime, a.datos.length, a.datos, u.id]
     );
-    if (!c) ir(volver, "error", "La cuota elegida no es tuya o no existe.");
-    if (c!.estado !== "pendiente") ir(volver, "error", "Esa cuota ya figura como paga.");
-    polizaId = c!.poliza_id;
+    docId = d!.id;
   }
-  const abiertos = await q1("SELECT COUNT(*)::int AS n FROM avisos_pago WHERE cliente_id = $1 AND estado = 'pendiente'", [u.cliente_id]);
-  if (abiertos!.n >= 10) ir(volver, "error", "Ya tenés varios comprobantes en revisión. Esperá a que los procesemos.");
-  const d = await q1(
-    `INSERT INTO documentos (cliente_id, poliza_id, tipo, nombre, mime, tamano, datos, subido_por)
-     VALUES ($1,$2,'comprobante',$3,$4,$5,$6,$7) RETURNING id`,
-    [u.cliente_id, polizaId, a!.nombre, a!.mime, a!.datos.length, a!.datos, u.id]
-  );
-  await q(
+  const av = await q1(
     `INSERT INTO avisos_pago (cliente_id, poliza_id, cuota_id, importe, fecha, metodo, nota, documento_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-    [u.cliente_id, polizaId, cuotaId, Number.isFinite(importe) ? importe : null, fecha || null, metodo, txtONull(fd, "nota"), d!.id]
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+    [u.cliente_id, c!.poliza_id, cuotaId, c!.importe, hoy(), metodo, txtONull(fd, "nota"), docId]
   );
-  ir(volver, "ok", "Recibimos tu comprobante. Lo vamos a revisar y, cuando lo confirmemos, vas a ver tu recibo acá.");
+  await crearAlerta({
+    tipo: "pago_informado",
+    cliente_id: u.cliente_id,
+    poliza_id: c!.poliza_id,
+    titulo: metodo === "efectivo" ? "El cliente va a pagar en efectivo" : "El cliente informó un pago por Mercado Pago",
+    detalle: `Cuota ${c!.numero}/${c!.cuotas_cant} de la póliza ${c!.poliza} (${c!.compania}).`,
+    datos: String(av!.id),
+  });
+  ir(
+    "/portal/pagos",
+    "ok",
+    metodo === "efectivo"
+      ? "Listo. Acercate a la oficina (San Lorenzo 600) a abonar en efectivo; cuando lo confirmemos vas a ver tu recibo acá."
+      : "Recibimos tu comprobante. Lo vamos a revisar y, cuando lo aprobemos, vas a ver tu recibo acá."
+  );
+}
+
+// ───────── Trámites y baja ─────────
+async function polizaPropia(u: { cliente_id: number }, polizaId: number, volver: string) {
+  const p = await q1(
+    "SELECT id, numero, compania, ramo, riesgo, dominio, cobertura FROM polizas WHERE id = $1 AND cliente_id = $2",
+    [polizaId, u.cliente_id]
+  );
+  if (!p) ir(volver, "error", "No encontramos esa póliza.");
+  if (await bloqueoPoliza(polizaId)) ir(volver, "error", "Esta póliza está inhabilitada por falta de pago.");
+  return p!;
+}
+
+/** Pedido de modificación de datos (vehículo, dominio, cobertura...). Avisa a la empresa y arma el mensaje de WhatsApp. */
+export async function solicitarTramite(fd: FormData) {
+  const u = await portalUsuario();
+  const volver = "/portal/tramite";
+  const p = await polizaPropia(u, Number(txt(fd, "poliza_id")), volver);
+  const nuevo = { riesgo: txt(fd, "riesgo"), dominio: txt(fd, "dominio").toUpperCase(), cobertura: txt(fd, "cobertura") };
+  const obs = txt(fd, "observaciones");
+  const cambios: Record<string, string> = {};
+  const lineas: string[] = [];
+  const etiquetas: Record<string, string> = { riesgo: "Vehículo / bien asegurado", dominio: "Dominio", cobertura: "Cobertura" };
+  for (const k of ["riesgo", "dominio", "cobertura"] as const) {
+    const actual = String(p[k] ?? "");
+    if (nuevo[k] && nuevo[k] !== actual) {
+      cambios[k] = nuevo[k];
+      lineas.push(`- ${etiquetas[k]}: ${actual || "(sin dato)"} → ${nuevo[k]}`);
+    }
+  }
+  if (!lineas.length && !obs) ir(`${volver}?poliza=${p.id}`, "error", "Cambiá algún dato o escribí una observación.");
+  const c = await q1("SELECT nombre FROM clientes WHERE id = $1", [u.cliente_id]);
+  const msg = [
+    `Hola! Soy ${c!.nombre}. Quiero hacer un trámite sobre mi póliza ${p.numero} (${p.compania}).`,
+    ...(lineas.length ? ["Datos a modificar:", ...lineas] : []),
+    ...(obs ? [`Observaciones: ${obs}`] : []),
+  ].join("\n");
+  await crearAlerta({
+    tipo: "tramite",
+    cliente_id: u.cliente_id,
+    poliza_id: p.id,
+    titulo: "El cliente pidió un trámite",
+    detalle: msg,
+    datos: JSON.stringify({ cambios, observaciones: obs || null }),
+  });
+  ir(`${volver}?wa=${encodeURIComponent(msg)}`, "ok", "Trámite enviado. Si querés, avisanos también por WhatsApp con el botón verde.");
+}
+
+/** El cliente pide anular la póliza: queda un aviso para los administradores. */
+export async function solicitarBaja(fd: FormData) {
+  const u = await portalUsuario();
+  const volver = "/portal/polizas";
+  const id = Number(txt(fd, "poliza_id"));
+  const p = await q1("SELECT id, numero, compania FROM polizas WHERE id = $1 AND cliente_id = $2", [id, u.cliente_id]);
+  if (!p) ir(volver, "error", "No encontramos esa póliza.");
+  const ya = await q1("SELECT 1 FROM alertas WHERE tipo = 'baja' AND poliza_id = $1 AND estado = 'pendiente'", [id]);
+  if (ya) ir(volver, "error", "Ya pediste la baja de esta póliza: la oficina se va a comunicar con vos.");
+  const motivo = txt(fd, "motivo");
+  await crearAlerta({
+    tipo: "baja",
+    cliente_id: u.cliente_id,
+    poliza_id: id,
+    titulo: "El cliente quiere anular la póliza",
+    detalle: `Póliza ${p!.numero} (${p!.compania}).${motivo ? ` Motivo: ${motivo}` : ""}`,
+  });
+  ir(volver, "ok", "Recibimos tu pedido de anulación. La oficina se va a comunicar con vos para confirmarlo.");
+}
+
+// ───────── Siniestros ─────────
+export async function denunciarSiniestro(fd: FormData) {
+  const u = await portalUsuario();
+  const volver = "/portal/siniestros";
+  const p = await polizaPropia(u, Number(txt(fd, "poliza_id")), volver);
+  const fecha = txt(fd, "fecha_hecho");
+  const lugar = txt(fd, "lugar");
+  const descripcion = txt(fd, "descripcion");
+  const tipo = txt(fd, "tipo");
+  if (!esFecha(fecha)) ir(volver, "error", "Indicá la fecha en que ocurrió el hecho.");
+  if (!lugar || descripcion.length < 5) ir(volver, "error", "Completá el lugar y contanos qué pasó.");
+  if (tipo && !TIPOS_SINIESTRO.includes(tipo)) ir(volver, "error", "Tipo de siniestro inválido.");
+  const archivos: Archivo[] = [];
+  for (const campo of ["archivo1", "archivo2", "archivo3"]) {
+    try {
+      const a = await leerArchivo(fd, campo);
+      if (a) archivos.push(a);
+    } catch (e) {
+      ir(volver, "error", e instanceof Error ? e.message : "Archivo inválido.");
+    }
+  }
+  const s = await q1(
+    `INSERT INTO siniestros (cliente_id, poliza_id, fecha_hecho, hora, lugar, tipo, descripcion, terceros, origen)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'cliente') RETURNING id`,
+    [u.cliente_id, p.id, fecha, txtONull(fd, "hora"), lugar, tipo || null, descripcion, txtONull(fd, "terceros")]
+  );
+  for (const a of archivos) await guardarDoc(a, { cliente_id: u.cliente_id, poliza_id: p.id, siniestro_id: s!.id, tipo: "siniestro", subido_por: u.id });
+  await crearAlerta({
+    tipo: "siniestro",
+    cliente_id: u.cliente_id,
+    poliza_id: p.id,
+    titulo: "El cliente denunció un siniestro",
+    detalle: `Póliza ${p.numero} (${p.compania}) · ${lugar} · ${descripcion.slice(0, 140)}`,
+    datos: String(s!.id),
+  });
+  ir(volver, "ok", "Recibimos tu denuncia. La oficina se va a comunicar con vos para continuar el trámite.");
 }

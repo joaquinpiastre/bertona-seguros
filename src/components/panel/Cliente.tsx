@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { btnDanger, btnGold, btnGhost, btnPrimary, btnSm } from "./ui";
 
@@ -35,7 +35,9 @@ export function SubmitButton({
   );
 }
 
-export function NavLinks({ items, onClick }: { items: { href: string; label: string; exact?: boolean }[]; onClick?: () => void }) {
+type ItemNav = { href: string; label: string; exact?: boolean; badge?: number };
+
+export function NavLinks({ items, onClick }: { items: ItemNav[]; onClick?: () => void }) {
   const path = usePathname();
   return (
     <>
@@ -51,7 +53,10 @@ export function NavLinks({ items, onClick }: { items: { href: string; label: str
               activo ? "border-accent-400 bg-white/10 text-white" : "border-transparent text-brand-100 hover:bg-white/5 hover:text-white"
             }`}
           >
-            {i.label}
+            <span className="flex items-center justify-between gap-2">
+              {i.label}
+              {i.badge ? <span className="min-w-5 bg-accent-500 px-1.5 text-center text-[11px] font-bold leading-5 text-brand-900">{i.badge}</span> : null}
+            </span>
           </Link>
         );
       })}
@@ -59,7 +64,7 @@ export function NavLinks({ items, onClick }: { items: { href: string; label: str
   );
 }
 
-export function MenuMovil({ items }: { items: { href: string; label: string; exact?: boolean }[] }) {
+export function MenuMovil({ items }: { items: ItemNav[] }) {
   const [abierto, setAbierto] = useState(false);
   const path = usePathname();
   useEffect(() => setAbierto(false), [path]);
@@ -82,54 +87,35 @@ export function MenuMovil({ items }: { items: { href: string; label: string; exa
   );
 }
 
-/** Formulario de cobro: al elegir una cuota completa el importe. */
+/** Formulario de cobro: solo efectivo o Mercado Pago; el importe es el de la cuota y la fecha es hoy (no se editan). */
 export function CobroForm({
   cuotas,
   hoy,
-  metodos,
-  polizas,
   cuotaInicial,
   clienteId,
   action,
-  aviso,
 }: {
   cuotas: { id: number; poliza: string; compania: string; dominio: string; numero: number; total: number; vencimiento: string; importe: number; vencida: boolean }[];
   hoy: string;
-  metodos: [string, string][];
-  polizas: { id: number; label: string }[];
   cuotaInicial?: number;
-  aviso?: { id: number; importe: number | null; fecha: string | null; metodo: string | null; documento_id: number | null; nota: string | null } | null;
   clienteId: number;
   action: (fd: FormData) => void | Promise<void>;
 }) {
   const [cuota, setCuota] = useState<string>(cuotaInicial ? String(cuotaInicial) : "");
-  const imp = useRef<HTMLInputElement>(null);
   const sel = cuotas.find((c) => String(c.id) === cuota);
-  useEffect(() => {
-    if (sel && imp.current && !aviso?.importe) imp.current.value = String(sel.importe);
-  }, [sel]);
+  const ars = (n: number) => n.toLocaleString("es-AR", { style: "currency", currency: "ARS" });
   const campo = "mt-1.5 w-full border border-line bg-white px-3 py-2.5 text-sm text-ink hover:border-brand-200 focus:border-brand-500";
+  const fijo = "mt-1.5 w-full border border-line bg-soft px-3 py-2.5 text-sm font-semibold text-brand-900";
   const lab = "block text-sm font-semibold text-brand-900";
   return (
     <form action={action} className="space-y-6">
       <input type="hidden" name="cliente_id" value={clienteId} />
-      {aviso && (
-        <>
-          <input type="hidden" name="aviso_id" value={aviso.id} />
-          <div className="border-l-4 border-brand-500 bg-brand-50 px-4 py-3 text-sm text-brand-900">
-            <strong>Comprobante enviado por el cliente.</strong>{" "}
-            {aviso.documento_id && <a href={`/api/documento/${aviso.documento_id}`} target="_blank" className="font-semibold underline">Ver archivo</a>}
-            {aviso.nota && <span className="block text-xs text-ink-soft">Nota del cliente: {aviso.nota}</span>}
-            <span className="block text-xs text-ink-soft">Revisalo, verificá que el dinero haya ingresado y confirmá el cobro. Al registrarlo, el comprobante queda asociado al recibo.</span>
-          </div>
-        </>
-      )}
       <fieldset>
-        <legend className="mb-2 text-sm font-semibold text-brand-900">¿Qué cuota se paga?</legend>
+        <legend className="mb-2 text-sm font-semibold text-brand-900">¿Qué cuota se paga? <span className="text-red-600">*</span></legend>
         <div className="space-y-2">
           {cuotas.map((c) => (
             <label key={c.id} className={`flex cursor-pointer items-center gap-3 border p-3 text-sm ${cuota === String(c.id) ? "border-brand-500 bg-brand-50" : "border-line bg-white hover:border-brand-200"}`}>
-              <input type="radio" name="cuota_id" value={c.id} checked={cuota === String(c.id)} onChange={() => setCuota(String(c.id))} className="h-4 w-4 accent-[var(--brand-700)]" />
+              <input type="radio" name="cuota_id" value={c.id} required checked={cuota === String(c.id)} onChange={() => setCuota(String(c.id))} className="h-4 w-4 accent-[var(--brand-700)]" />
               <span className="flex-1">
                 <strong className="text-brand-900">Póliza {c.poliza}</strong> · {c.compania}
                 {c.dominio ? ` · ${c.dominio}` : ""} · Cuota {c.numero}/{c.total}
@@ -137,46 +123,33 @@ export function CobroForm({
                   Vence {c.vencimiento.split("-").reverse().join("/")} {c.vencida && <strong className="text-red-700">· VENCIDA</strong>}
                 </span>
               </span>
-              <strong className="text-brand-900">{c.importe.toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</strong>
+              <strong className="text-brand-900">{ars(c.importe)}</strong>
             </label>
           ))}
-          <label className={`flex cursor-pointer items-center gap-3 border p-3 text-sm ${cuota === "" ? "border-brand-500 bg-brand-50" : "border-line bg-white hover:border-brand-200"}`}>
-            <input type="radio" name="cuota_id" value="" checked={cuota === ""} onChange={() => setCuota("")} className="h-4 w-4 accent-[var(--brand-700)]" />
-            <span className="flex-1">Pago a cuenta / sin cuota asociada</span>
-          </label>
+          {cuotas.length === 0 && <p className="text-sm text-ink-soft">Este cliente no tiene cuotas pendientes de cobro.</p>}
         </div>
-        {cuota === "" && (
-          <label className={`${lab} mt-3 max-w-md`}>
-            Póliza (opcional)
-            <select name="poliza_id" defaultValue="" className={campo}>
-              <option value="">Sin póliza</option>
-              {polizas.map((p) => (
-                <option key={p.id} value={p.id}>{p.label}</option>
-              ))}
-            </select>
-          </label>
-        )}
       </fieldset>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <label className={lab}>
-          Importe cobrado (ARS) <span className="text-red-600">*</span>
-          <input ref={imp} name="importe" required inputMode="decimal" placeholder="0,00" defaultValue={aviso?.importe ?? undefined} className={campo} />
-        </label>
-        <label className={lab}>
-          Fecha de pago <span className="text-red-600">*</span>
-          <input name="fecha" type="date" required defaultValue={aviso?.fecha ?? hoy} className={campo} />
-        </label>
+        <div className={lab}>
+          Importe a cobrar
+          <div className={fijo}>{sel ? ars(sel.importe) : "Elegí una cuota"}</div>
+          <span className="mt-1 block text-xs font-normal text-ink-soft">Es el importe de la cuota: no se modifica.</span>
+        </div>
+        <div className={lab}>
+          Fecha de pago
+          <div className={fijo}>{hoy.split("-").reverse().join("/")}</div>
+          <span className="mt-1 block text-xs font-normal text-ink-soft">Se registra con la fecha de hoy.</span>
+        </div>
         <label className={lab}>
           Forma de pago <span className="text-red-600">*</span>
-          <select name="metodo" required defaultValue={aviso?.metodo ?? "efectivo"} className={campo}>
-            {metodos.map(([v, l]) => (
-              <option key={v} value={v}>{l}</option>
-            ))}
+          <select name="metodo" required defaultValue="efectivo" className={campo}>
+            <option value="efectivo">Efectivo</option>
+            <option value="mercadopago">Mercado Pago</option>
           </select>
         </label>
         <label className={`${lab} sm:col-span-3`}>
-          Referencia (N° de operación, cheque, etc.)
+          Referencia (N° de operación de Mercado Pago, etc.)
           <input name="referencia" className={campo} />
         </label>
         <label className={`${lab} sm:col-span-3`}>

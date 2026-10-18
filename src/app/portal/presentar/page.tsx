@@ -1,3 +1,5 @@
+import Image from "next/image";
+import { PolizaBloqueada } from "@/components/panel/Bloqueo";
 import { Card, Flash } from "@/components/panel/ui";
 import { EMPRESA } from "@/config/empresa";
 import { dato, type Row } from "@/lib/api";
@@ -19,7 +21,7 @@ export default async function Presentar({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   await portalUsuario();
   const h = hoy();
-  const { c, polizas } = await dato<{ c: Row | null; polizas: Row[] }>("portalPresentar");
+  const { c, polizas, bloqueadas } = await dato<{ c: Row | null; polizas: Row[]; bloqueadas: Row[] }>("portalPresentar");
 
   return (
     <>
@@ -29,7 +31,9 @@ export default async function Presentar({ searchParams }: { searchParams: Promis
       </p>
       <Flash sp={sp} />
 
-      {polizas.length === 0 && (
+      {bloqueadas.map((b) => <div key={b.id} className="mb-4"><PolizaBloqueada p={b} /></div>)}
+
+      {polizas.length === 0 && bloqueadas.length === 0 && (
         <Card><p className="text-sm text-ink-soft">No tenés pólizas vigentes cargadas. Si ya contrataste un seguro con nosotros, escribinos y lo cargamos.</p></Card>
       )}
 
@@ -90,10 +94,13 @@ export default async function Presentar({ searchParams }: { searchParams: Promis
         })}
       </div>
 
-      <p className="mt-6 text-xs leading-relaxed text-ink-soft">
+      <div className="mt-6 flex flex-wrap items-center gap-4">
+        <div className="border border-line bg-white px-3 py-2"><Image src="/brand/ssn.png" alt="Superintendencia de Seguros de la Nación" width={120} height={70} className="h-12 w-auto" /></div>
+        <p className="max-w-xl text-xs leading-relaxed text-ink-soft">
         Esta pantalla es informativa y refleja los datos que tenemos cargados. Los documentos válidos son los emitidos por la aseguradora (póliza y certificado de cobertura).
         Ante cualquier duda: {EMPRESA.telefonoVisible}.
-      </p>
+        </p>
+      </div>
     </>
   );
 }

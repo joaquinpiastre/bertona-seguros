@@ -1,7 +1,9 @@
 import { SignJWT, jwtVerify } from "jose";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { Redirigir } from "./flash";
+import { estadoPolizas } from "./core";
 import { q1 } from "./db";
+import { EMPRESA } from "./empresa";
 
 function secret() {
   const s = process.env.AUTH_SECRET || (process.env.NODE_ENV !== "production" ? "dev-secret-bertona-cambiar" : "");
@@ -53,10 +55,16 @@ export async function requireSocio(): Promise<Usuario & { cliente_id: number }> 
   return u as Usuario & { cliente_id: number };
 }
 
-/** Socio logueado; si debe cambiar la contraseña temporal lo manda a su perfil. */
-export async function portalUsuario(opts: { permitirCambio?: boolean } = {}) {
+export const MSG_NO_ACTIVADA = `Tu póliza no está activada. Comunicate con la oficina al ${EMPRESA.telefonoVisible} para regularizar tu situación.`;
+
+/**
+ * Socio logueado. Si solo tiene una póliza y no está activa (baja o falta de pago),
+ * se cierra su sesión y se le avisa que la póliza no está activada.
+ */
+export async function portalUsuario(_opts: { permitirCambio?: boolean } = {}) {
   const u = await requireSocio();
-  if (u.debe_cambiar_password && !opts.permitirCambio) throw new Redirigir("/portal/perfil?cambiar=1");
+  const { todas, activas } = await estadoPolizas(u.cliente_id);
+  if (todas.length <= 1 && activas.length === 0) throw new Redirigir("/api/cerrar?error=" + encodeURIComponent(MSG_NO_ACTIVADA));
   return u;
 }
 

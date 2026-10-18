@@ -42,6 +42,7 @@ export default async function DetallePoliza({ params, searchParams }: Props) {
           <Field label="N° de póliza" name="numero" defaultValue={p.numero} required />
           <Field label="Riesgo / bien asegurado" name="riesgo" defaultValue={p.riesgo} className="lg:col-span-2" />
           <Field label="Dominio (patente)" name="dominio" defaultValue={p.dominio} />
+          <Field label="Cobertura" name="cobertura" defaultValue={p.cobertura} className="lg:col-span-2" />
           <Field label="Suma asegurada (ARS)" name="suma_asegurada" defaultValue={p.suma ?? ""} />
           <Field label="Vigencia desde" name="vigencia_desde" type="date" defaultValue={p.desde} />
           <Field label="Vigencia hasta" name="vigencia_hasta" type="date" defaultValue={p.hasta} />

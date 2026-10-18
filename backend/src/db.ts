@@ -152,6 +152,64 @@ CREATE TABLE IF NOT EXISTS avisos_pago (
   creado TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ── Ingreso de clientes con DNI, agencia, cobertura ──
+ALTER TABLE usuarios ALTER COLUMN email DROP NOT NULL;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS dni TEXT;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS pin_hash TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_dni ON usuarios(dni) WHERE dni IS NOT NULL;
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS es_agencia BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE polizas ADD COLUMN IF NOT EXISTS cobertura TEXT;
+
+-- ── Configuración editable desde el panel ──
+CREATE TABLE IF NOT EXISTS config (
+  clave TEXT PRIMARY KEY,
+  valor TEXT NOT NULL DEFAULT ''
+);
+
+-- ── Siniestros ──
+CREATE TABLE IF NOT EXISTS siniestros (
+  id SERIAL PRIMARY KEY,
+  cliente_id INT NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+  poliza_id INT REFERENCES polizas(id) ON DELETE SET NULL,
+  fecha_hecho DATE,
+  hora TEXT,
+  lugar TEXT,
+  tipo TEXT,
+  descripcion TEXT,
+  terceros TEXT,
+  denuncia_policial TEXT,
+  nro_compania TEXT,
+  estado TEXT NOT NULL DEFAULT 'denunciado',
+  origen TEXT NOT NULL DEFAULT 'admin',
+  creado TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS siniestro_notas (
+  id SERIAL PRIMARY KEY,
+  siniestro_id INT NOT NULL REFERENCES siniestros(id) ON DELETE CASCADE,
+  texto TEXT NOT NULL,
+  autor TEXT,
+  creado TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE documentos ADD COLUMN IF NOT EXISTS siniestro_id INT REFERENCES siniestros(id) ON DELETE CASCADE;
+
+-- ── Avisos para la empresa (trámites, bajas, siniestros, pagos informados, pólizas vencidas...) ──
+CREATE TABLE IF NOT EXISTS alertas (
+  id SERIAL PRIMARY KEY,
+  tipo TEXT NOT NULL,
+  cliente_id INT NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+  poliza_id INT REFERENCES polizas(id) ON DELETE SET NULL,
+  titulo TEXT NOT NULL,
+  detalle TEXT,
+  datos TEXT,
+  estado TEXT NOT NULL DEFAULT 'pendiente',
+  creado TIMESTAMPTZ NOT NULL DEFAULT now(),
+  resuelta_en TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_alertas_estado ON alertas(estado);
+CREATE INDEX IF NOT EXISTS idx_siniestros_cliente ON siniestros(cliente_id);
+
 CREATE INDEX IF NOT EXISTS idx_avisos_estado ON avisos_pago(estado);
 CREATE INDEX IF NOT EXISTS idx_polizas_cliente ON polizas(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_cuotas_poliza ON cuotas(poliza_id);
@@ -164,6 +222,16 @@ CREATE INDEX IF NOT EXISTS idx_docs_pago ON documentos(pago_id);
 
 async function inicializar(r: Runner) {
   await r.exec(SCHEMA);
+  // Clientes que ya tenían usuario: su DNI pasa a ser el usuario de ingreso.
+  try {
+    await r.query(
+      `UPDATE usuarios u SET dni = regexp_replace(c.documento, '[^0-9]', '', 'g')
+       FROM clientes c WHERE u.cliente_id = c.id AND u.rol = 'socio' AND u.dni IS NULL
+         AND length(regexp_replace(c.documento, '[^0-9]', '', 'g')) >= 7`
+    );
+  } catch (e) {
+    console.warn("[db] No se pudo migrar algún DNI:", (e as Error).message);
+  }
   const hay = await r.query("SELECT 1 FROM usuarios WHERE rol = 'admin' LIMIT 1");
   if (hay.length) return;
   let email = process.env.ADMIN_EMAIL;

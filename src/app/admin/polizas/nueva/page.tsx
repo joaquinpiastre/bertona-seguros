@@ -21,6 +21,7 @@ export default async function NuevaPoliza({ searchParams }: { searchParams: Prom
             <Field label="N° de póliza" name="numero" required />
             <Field label="Riesgo / bien asegurado" name="riesgo" placeholder="Ej: JEEP A.F.F" className="lg:col-span-2" />
             <Field label="Dominio (patente)" name="dominio" placeholder="Solo vehículos" />
+            <Field label="Cobertura" name="cobertura" placeholder="Ej: Todo riesgo con franquicia" className="lg:col-span-2" />
             <Field label="Suma asegurada (ARS)" name="suma_asegurada" />
             <Field label="Vigencia desde" name="vigencia_desde" type="date" />
             <Field label="Vigencia hasta" name="vigencia_hasta" type="date" />

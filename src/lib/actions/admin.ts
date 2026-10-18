@@ -14,8 +14,8 @@ export async function alternarCliente(fd: FormData) {
   await accion("alternarCliente", fd);
 }
 
-export async function crearAccesoCliente(fd: FormData) {
-  await accion("crearAccesoCliente", fd);
+export async function quitarPinCliente(fd: FormData) {
+  await accion("quitarPinCliente", fd);
 }
 
 export async function restablecerPassword(fd: FormData) {
@@ -85,3 +85,44 @@ export async function rechazarAviso(fd: FormData) {
 export async function eliminarCliente(fd: FormData) {
   await accion("eliminarCliente", fd);
 }
+
+export async function aprobarAviso(fd: FormData) {
+  await accion("aprobarAviso", fd);
+}
+
+export async function resolverAlerta(fd: FormData) {
+  await accion("resolverAlerta", fd);
+}
+
+export async function anularPolizaDesdeAlerta(fd: FormData) {
+  await accion("anularPolizaDesdeAlerta", fd);
+}
+
+export async function aplicarTramite(fd: FormData) {
+  await accion("aplicarTramite", fd);
+}
+
+export async function guardarConfig(fd: FormData) {
+  await accion("guardarConfig", fd);
+}
+
+export async function crearSiniestro(fd: FormData) {
+  await accion("crearSiniestro", fd);
+}
+
+export async function actualizarSiniestro(fd: FormData) {
+  await accion("actualizarSiniestro", fd);
+}
+
+export async function agregarNotaSiniestro(fd: FormData) {
+  await accion("agregarNotaSiniestro", fd);
+}
+
+export async function subirArchivoSiniestro(fd: FormData) {
+  await accion("subirArchivoSiniestro", fd);
+}
+
+export async function eliminarSiniestro(fd: FormData) {
+  await accion("eliminarSiniestro", fd);
+}
+

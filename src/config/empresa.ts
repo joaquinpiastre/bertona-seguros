@@ -125,3 +125,6 @@ export const FAQ = [
 ];
 
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? EMPRESA.web;
+
+// Dirección del portal de clientes que se incluye en los mensajes. TODO: cambiar al dominio propio cuando esté listo.
+export const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? "https://bertona-seguros.vercel.app/ingresar";

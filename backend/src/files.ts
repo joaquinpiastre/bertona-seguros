@@ -1,4 +1,5 @@
 import { getUsuario } from "./auth";
+import { TEXTO_BLOQUEO, bloqueoPoliza } from "./core";
 import { q1 } from "./db";
 import { METODOS, esFecha, fecha, hoy } from "./format";
 import { generarReciboPdf } from "./pdf";
@@ -11,9 +12,10 @@ const bytes = (b: Buffer | Uint8Array) => new Uint8Array(b);
 export async function documento(id: number): Promise<Response> {
   const u = await getUsuario();
   if (!u) return texto("No autorizado", 401);
-  const d = await q1("SELECT cliente_id, nombre, mime, datos FROM documentos WHERE id = $1", [id]);
+  const d = await q1("SELECT cliente_id, poliza_id, siniestro_id, nombre, mime, datos FROM documentos WHERE id = $1", [id]);
   if (!d) return texto("No encontrado", 404);
   if (u.rol !== "admin" && d.cliente_id !== u.cliente_id) return texto("No autorizado", 403);
+  if (u.rol !== "admin" && !d.siniestro_id && (await bloqueoPoliza(d.poliza_id))) return texto(TEXTO_BLOQUEO.falta_pago, 403);
   return new Response(bytes(d.datos), {
     headers: { ...HDR, "Content-Type": d.mime, "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(d.nombre)}` },
   });
@@ -26,6 +28,10 @@ export async function recibo(id: number, sistema: boolean): Promise<Response> {
   const d = await datosRecibo(id);
   if (!d) return texto("No encontrado", 404);
   if (u.rol !== "admin" && d.cliente_id !== u.cliente_id) return texto("No autorizado", 403);
+  if (u.rol !== "admin") {
+    const pg = await q1("SELECT poliza_id FROM pagos WHERE id = $1", [id]);
+    if (await bloqueoPoliza(pg?.poliza_id ?? null)) return texto(TEXTO_BLOQUEO.falta_pago, 403);
+  }
 
   if (!sistema && d.estado === "aplicado") {
     const propio = await q1("SELECT nombre, mime, datos FROM documentos WHERE pago_id = $1 AND tipo = 'recibo' ORDER BY id DESC LIMIT 1", [d.id]);

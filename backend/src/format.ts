@@ -72,3 +72,11 @@ export function waNumero(tel?: string | null) {
   if (d.startsWith("54")) return "549" + d.slice(2);
   return "549" + d.replace(/^0/, "");
 }
+
+export const TIPOS_SINIESTRO = ["Choque", "Robo / hurto", "Incendio", "Granizo / fenómeno climático", "Daños a terceros", "Cristales", "Otro"];
+
+export const ESTADOS_SINIESTRO: Record<string, string> = {
+  denunciado: "Denunciado",
+  en_gestion: "En gestión",
+  cerrado: "Cerrado",
+};

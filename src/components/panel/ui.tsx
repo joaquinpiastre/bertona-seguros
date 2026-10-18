@@ -85,6 +85,7 @@ type FieldProps = {
   step?: string;
   autoComplete?: string;
   accept?: string;
+  inputMode?: "numeric" | "text" | "decimal" | "tel" | "email";
 };
 export function Field({ label, name, type = "text", defaultValue, required, placeholder, hint, className = "", ...rest }: FieldProps) {
   return (

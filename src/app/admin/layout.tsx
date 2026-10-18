@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { MenuMovil, NavLinks, SubmitButton } from "@/components/panel/Cliente";
+import { dato } from "@/lib/api";
 import { requireAdmin } from "@/lib/auth";
 import { logout } from "@/lib/actions/auth";
 
@@ -10,16 +11,21 @@ export const dynamic = "force-dynamic";
 
 const ITEMS = [
   { href: "/admin", label: "Resumen", exact: true },
-  { href: "/admin/cobranzas", label: "Cobranzas" },
-  { href: "/admin/comprobantes", label: "Comprobantes" },
+  { href: "/admin/vencimientos", label: "Vencimientos" },
+  { href: "/admin/alertas", label: "Avisos" },
+  { href: "/admin/comprobantes", label: "Pagos informados" },
   { href: "/admin/pagos", label: "Pagos y caja" },
   { href: "/admin/clientes", label: "Clientes" },
   { href: "/admin/polizas", label: "Pólizas" },
+  { href: "/admin/siniestros", label: "Siniestros" },
+  { href: "/admin/configuracion", label: "Configuración" },
   { href: "/admin/equipo", label: "Equipo" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const u = await requireAdmin();
+  const cont = await dato<{ alertas: number; pagos: number }>("contadores").catch(() => ({ alertas: 0, pagos: 0 }));
+  const items = ITEMS.map((i) => ({ ...i, badge: i.href === "/admin/alertas" ? cont.alertas : i.href === "/admin/comprobantes" ? cont.pagos : 0 }));
   return (
     <div className="min-h-screen bg-soft lg:flex">
       <aside className="hidden w-64 shrink-0 flex-col bg-brand-900 lg:flex">
@@ -27,7 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin"><Logo light /></Link>
           <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-accent-300">Panel de administración</p>
         </div>
-        <nav aria-label="Administración" className="flex-1 py-3"><NavLinks items={ITEMS} /></nav>
+        <nav aria-label="Administración" className="flex-1 py-3"><NavLinks items={items} /></nav>
         <div className="border-t border-white/10 p-5 text-sm text-brand-100">
           <p className="truncate font-semibold text-white">{u.nombre}</p>
           <p className="truncate text-xs">{u.email}</p>
@@ -41,7 +47,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <div className="relative min-w-0 flex-1">
         <div className="sticky top-0 z-20 flex h-14 items-center justify-between bg-brand-900 px-4 lg:hidden">
           <Link href="/admin"><Logo light /></Link>
-          <MenuMovil items={ITEMS} />
+          <MenuMovil items={items} />
         </div>
         <main className="mx-auto max-w-6xl p-4 sm:p-6 lg:p-8">{children}</main>
       </div>

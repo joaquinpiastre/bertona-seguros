@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { dato, type Row } from "@/lib/api";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
@@ -28,6 +29,7 @@ export default async function PortalLayout({ children }: { children: React.React
       </header>
       <main className="mx-auto max-w-5xl p-4 sm:p-6 lg:py-8">{children}</main>
       <footer className="mx-auto max-w-5xl px-4 pb-10 text-center text-xs text-ink-soft sm:px-6">
+        <Image src="/brand/ssn.png" alt="Superintendencia de Seguros de la Nación" width={120} height={70} className="mx-auto mb-3 h-10 w-auto" />
         ¿Necesitás ayuda? <a className="font-semibold text-brand-700 underline" href={waLink("Hola! Necesito ayuda con mi cuenta.")} target="_blank" rel="noopener noreferrer">Escribinos por WhatsApp</a> ·{" "}
         <Link href="/" className="underline">Volver al sitio</Link>
       </footer>

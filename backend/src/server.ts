@@ -4,14 +4,17 @@ import { timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import * as admin from "./actions/admin";
+import * as gestion from "./actions/gestion";
 import * as portal from "./actions/portal";
-import { contexto, firmarToken, loginBloqueado, loginFallido, loginOk, usuarioDeToken } from "./auth";
+import { MSG_NO_ACTIVADA, contexto, firmarToken, loginBloqueado, loginFallido, loginOk, usuarioDeToken } from "./auth";
+import { estadoPolizas, soloDigitos } from "./core";
 import { DATOS } from "./data";
+import { DATOS2 } from "./data2";
 import { q1 } from "./db";
 import { documento, exportarPagos, recibo } from "./files";
 import { NoEncontrado, Redirigir } from "./flash";
 
-const ACCIONES: Record<string, (fd: FormData) => Promise<void>> = { ...admin, ...portal };
+const ACCIONES: Record<string, (fd: FormData) => Promise<void>> = { ...admin, ...gestion, ...portal };
 const app = new Hono();
 
 app.get("/health", (c) => c.text("ok"));
@@ -44,6 +47,38 @@ app.post("/auth/login", async (c) => {
   return c.json({ token: await firmarToken(u!.id), rol: u!.rol });
 });
 
+// Ingreso de clientes: solo con el DNI (y una clave opcional si el cliente la activó).
+app.post("/auth/login-dni", async (c) => {
+  const b = (await c.req.json().catch(() => ({}))) as { dni?: string; pin?: string; ip?: string };
+  const dni = soloDigitos(b.dni);
+  const ip = String(b.ip ?? "sin-ip").slice(0, 64);
+  const claveIp = "ip:" + ip;
+  const claveDni = "dni:" + dni;
+  if (loginBloqueado(claveIp) || loginBloqueado(claveDni)) return c.json({ error: "Demasiados intentos. Probá de nuevo en unos minutos." });
+  if (dni.length < 7 || dni.length > 11) return c.json({ error: "Ingresá tu DNI, solo números." });
+  const u = await q1(
+    `SELECT u.id, u.pin_hash, u.cliente_id FROM usuarios u JOIN clientes c ON c.id = u.cliente_id
+     WHERE u.rol = 'socio' AND u.activo AND c.activo AND (u.dni = $1 OR (length(u.dni) = 11 AND substring(u.dni from 3 for 8) = $1)) LIMIT 1`,
+    [dni]
+  );
+  if (!u) {
+    loginFallido(claveIp);
+    return c.json({ error: "No encontramos un cliente con ese DNI. Si ya sos cliente, comunicate con la oficina." });
+  }
+  if (u.pin_hash) {
+    if (!b.pin) return c.json({ needsPin: true });
+    if (!(await bcrypt.compare(String(b.pin), u.pin_hash))) {
+      loginFallido(claveDni);
+      loginFallido(claveIp);
+      return c.json({ needsPin: true, error: "La clave no es correcta." });
+    }
+  }
+  const { todas, activas } = await estadoPolizas(u.cliente_id);
+  if (todas.length <= 1 && activas.length === 0) return c.json({ error: MSG_NO_ACTIVADA });
+  loginOk(claveDni);
+  return c.json({ token: await firmarToken(u.id), rol: "socio" });
+});
+
 app.get("/me", async (c) => {
   const user = contexto.getStore()?.user;
   return user ? c.json({ user }) : c.json({ user: null }, 401);
@@ -63,7 +98,7 @@ app.post("/actions/:name", bodyLimit({ maxSize: 12 * 1024 * 1024 }), async (c) =
 });
 
 app.get("/data/:name", async (c) => {
-  const fn = DATOS[c.req.param("name")];
+  const fn = DATOS2[c.req.param("name")] ?? DATOS[c.req.param("name")];
   if (!fn) return c.json({ error: "Consulta inexistente" }, 404);
   try {
     return c.json(await fn(new URL(c.req.url).searchParams));

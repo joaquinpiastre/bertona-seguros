@@ -3,11 +3,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const ITEMS = [
-  { href: "/portal", label: "Resumen", exact: true },
+  { href: "/portal", label: "Inicio", exact: true },
+  { href: "/portal/pagar", label: "Pagar" },
   { href: "/portal/presentar", label: "Presentar documentación" },
   { href: "/portal/polizas", label: "Mis pólizas" },
   { href: "/portal/pagos", label: "Pagos y recibos" },
-  { href: "/portal/contactos", label: "Contactos de emergencia" },
+  { href: "/portal/tramite", label: "Trámite" },
+  { href: "/portal/siniestros", label: "Siniestros" },
+  { href: "/portal/auxilio", label: "Auxilio mecánico" },
+  { href: "/portal/contactos", label: "Contactos" },
   { href: "/portal/perfil", label: "Mis datos" },
 ];
 
