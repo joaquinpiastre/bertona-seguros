@@ -21,7 +21,7 @@ export const EMPRESA = {
   // Formato internacional para WhatsApp (con el 9 de celulares).
   whatsapp: "5492604568276",
   email: "cotizacionesbertona@yahoo.com.ar",
-  web: "https://bertonaseguros.com.ar",
+  web: "https://bertonaseguros.com",
   facebook: "https://www.facebook.com/SegurosBertona",
   instagram: "https://www.instagram.com/seguros_bertona/",
   reputacion: { estrellas: 4.5, resenas: 35, seguidoresFacebook: "10 mil" },
@@ -126,5 +126,5 @@ export const FAQ = [
 
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? EMPRESA.web;
 
-// Dirección del portal de clientes que se incluye en los mensajes. TODO: cambiar al dominio propio cuando esté listo.
-export const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? "https://bertona-seguros.vercel.app/ingresar";
+// Dirección del portal de clientes que se incluye en los mensajes. Dominio propio.
+export const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? "https://bertonaseguros.com/ingresar";
