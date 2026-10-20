@@ -227,7 +227,9 @@ export const DATOS: Record<string, (sp: SP) => Promise<unknown>> = {
     const pid = idDe(sp);
     const p = await q1(
       `SELECT p.*, p.vigencia_desde::text AS desde, p.vigencia_hasta::text AS hasta, p.suma_asegurada::float8 AS suma, p.importe_cuota::float8 AS imp,
-              cl.nombre AS cliente, cl.telefono FROM polizas p JOIN clientes cl ON cl.id = p.cliente_id WHERE p.id = $1`,
+              cl.nombre AS cliente, cl.telefono,
+              (SELECT COUNT(*)::int FROM pagos WHERE poliza_id = p.id) AS npagos
+       FROM polizas p JOIN clientes cl ON cl.id = p.cliente_id WHERE p.id = $1`,
       [pid]
     );
     if (!p) throw new NoEncontrado();

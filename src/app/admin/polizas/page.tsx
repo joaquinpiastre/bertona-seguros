@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { dato, type Row } from "@/lib/api";
+import { SubmitButton } from "@/components/panel/Cliente";
 import { Badge, Card, Flash, LinkBtn, PageHead, Tabla, Td, Th, btnGhost, inputCls } from "@/components/panel/ui";
+import { eliminarPoliza } from "@/lib/actions/admin";
 import { ESTADOS_POLIZA, RAMOS_LISTA, fecha, hoy, sumarDias } from "@/lib/format";
 
 type SP = Promise<{ ok?: string; error?: string; q?: string; estado?: string; ramo?: string; porvencer?: string }>;
@@ -28,7 +30,7 @@ export default async function Polizas({ searchParams }: { searchParams: SP }) {
       </form>
       <Card>
         <div className="-m-5">
-          <Tabla head={<><Th>Cliente</Th><Th>Compañía / ramo</Th><Th>Póliza</Th><Th>Riesgo</Th><Th>Vence</Th><Th>Estado</Th><Th>Documentos</Th></>} vacio="No se encontraron pólizas.">
+          <Tabla head={<><Th>Cliente</Th><Th>Compañía / ramo</Th><Th>Póliza</Th><Th>Riesgo</Th><Th>Vence</Th><Th>Estado</Th><Th>Documentos</Th><Th /></>} vacio="No se encontraron pólizas.">
             {filas.map((p) => (
               <tr key={p.id}>
                 <Td><Link href={`/admin/clientes/${p.cliente_id}`} className="hover:underline">{p.cliente}</Link></Td>
@@ -43,6 +45,12 @@ export default async function Polizas({ searchParams }: { searchParams: SP }) {
                 <Td className="text-xs">
                   <span className={p.tiene_poliza ? "text-emerald-700" : "text-amber-700"}>{p.tiene_poliza ? "✓" : "✗"} Póliza</span>{" "}
                   <span className={p.tiene_cert ? "text-emerald-700" : "text-amber-700"}>{p.tiene_cert ? "✓" : "✗"} Certificado</span>
+                </Td>
+                <Td right>
+                  <div className="flex justify-end gap-2">
+                    <LinkBtn sm href={`/admin/polizas/${p.id}`}>Editar</LinkBtn>
+                    <form action={eliminarPoliza}><input type="hidden" name="id" value={p.id} /><input type="hidden" name="volver" value="/admin/polizas" /><SubmitButton variant="danger" small confirmar={`¿Eliminar la póliza ${p.numero}? Se borran también sus cuotas, certificados y documentos.`} pendiente="Eliminando…">Eliminar</SubmitButton></form>
+                  </div>
                 </Td>
               </tr>
             ))}

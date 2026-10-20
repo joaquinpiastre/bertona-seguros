@@ -5,7 +5,7 @@ import { Badge, Card, Flash, btnGhost } from "@/components/panel/ui";
 import { EMPRESA, RECIBO_LEGAL, waLink } from "@/config/empresa";
 import { dato, type Row } from "@/lib/api";
 import { portalUsuario } from "@/lib/auth";
-import { ESTADOS_POLIZA, fecha, hoy, money } from "@/lib/format";
+import { ESTADOS_POLIZA, fecha, hoy, money, sumarDias } from "@/lib/format";
 
 const ACCESOS: { href: string; titulo: string; texto: string; icono: NombreIcono }[] = [
   { href: "/portal/presentar", titulo: "Mis papeles", texto: "Mostrá tu seguro si te lo piden en la ruta", icono: "papeles" },
@@ -24,18 +24,9 @@ export default async function PortalInicio({ searchParams }: { searchParams: Pro
   const nombre = (c?.nombre ?? u.nombre).split(" ")[0];
   const nombreLindo = nombre.charAt(0) + nombre.slice(1).toLowerCase();
   const total = cuotas.reduce((s, x) => s + x.importe, 0);
-
-  return (
-    <>
-      <h1 className="text-2xl text-brand-900 sm:text-3xl">Hola, {nombreLindo}</h1>
-      <p className="mb-6 mt-1 text-sm text-ink-soft">Este es el resumen de tu cuenta en Bertona Seguros.</p>
-      <Flash sp={sp} />
-
-      {bloqueadas.map((p) => (
-        <div key={p.id} className="mb-4"><PolizaBloqueada p={p} /></div>
-      ))}
-
-      {cuotas.length > 0 ? (
+  // La cuota va arriba solo si está vencida o vence en 5 días o menos; si no, queda debajo de los últimos pagos.
+  const urgente = cuotas.some((x) => x.venc <= sumarDias(h, 5));
+  const proximoPago = cuotas.length > 0 && (
         <section className="mb-6 border-2 border-accent-500 bg-white p-5 sm:p-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
@@ -59,9 +50,22 @@ export default async function PortalInicio({ searchParams }: { searchParams: Pro
           </ul>
           <p className="mt-3 text-xs text-ink-soft">Si querés pagar más de una cuota juntas, tocá PAGAR: ahí elegís cuáles. Se hace un solo recibo.</p>
         </section>
-      ) : polizas.length > 0 ? (
+  );
+
+  return (
+    <>
+      <h1 className="text-2xl text-brand-900 sm:text-3xl">Hola, {nombreLindo}</h1>
+      <p className="mb-6 mt-1 text-sm text-ink-soft">Este es el resumen de tu cuenta en Bertona Seguros.</p>
+      <Flash sp={sp} />
+
+      {bloqueadas.map((p) => (
+        <div key={p.id} className="mb-4"><PolizaBloqueada p={p} /></div>
+      ))}
+
+      {urgente && proximoPago}
+      {cuotas.length === 0 && polizas.length > 0 && (
         <div className="mb-6 border-l-4 border-emerald-600 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">No tenés cuotas pendientes. ¡Estás al día!</div>
-      ) : null}
+      )}
 
       {nContactos.n === 0 && (
         <div className="mb-6 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -118,6 +122,8 @@ export default async function PortalInicio({ searchParams }: { searchParams: Pro
           </ul>
         )}
       </Card>
+
+      {!urgente && cuotas.length > 0 && <div className="mt-6">{proximoPago}</div>}
 
       <p className="mt-8 border-t border-line pt-5 text-center text-xs font-semibold leading-relaxed text-ink">{RECIBO_LEGAL}</p>
     </>

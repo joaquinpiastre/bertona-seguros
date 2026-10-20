@@ -3,7 +3,7 @@ import { dato, type Row } from "@/lib/api";
 import { notFound } from "next/navigation";
 import { SubmitButton } from "@/components/panel/Cliente";
 import { Badge, Card, Field, Flash, LinkBtn, PageHead, SelectField, Tabla, Td, TextArea, Th } from "@/components/panel/ui";
-import { actualizarCliente, alternarCliente, eliminarCliente, crearContactoAdmin, eliminarContactoAdmin, definirClaveCliente } from "@/lib/actions/admin";
+import { actualizarCliente, alternarCliente, eliminarCliente, eliminarPoliza, crearContactoAdmin, eliminarContactoAdmin, definirClaveCliente } from "@/lib/actions/admin";
 import { ESTADOS_POLIZA, METODOS, PARENTESCOS, fecha, money, waCliente } from "@/lib/format";
 import { PORTAL_URL } from "@/config/empresa";
 
@@ -85,7 +85,7 @@ export default async function DetalleCliente({ params, searchParams }: Props) {
 
       <Card title="Pólizas" className="mt-6" actions={<LinkBtn sm href={`/admin/polizas/nueva?cliente=${cid}`}>Nueva póliza</LinkBtn>}>
         <div className="-m-5">
-          <Tabla head={<><Th>Compañía / ramo</Th><Th>Póliza</Th><Th>Riesgo</Th><Th>Vigencia hasta</Th><Th>Estado</Th><Th>Documentos</Th></>} vacio="El cliente no tiene pólizas cargadas.">
+          <Tabla head={<><Th>Compañía / ramo</Th><Th>Póliza</Th><Th>Riesgo</Th><Th>Vigencia hasta</Th><Th>Estado</Th><Th>Documentos</Th><Th /></>} vacio="El cliente no tiene pólizas cargadas.">
             {polizas.map((p) => (
               <tr key={p.id}>
                 <Td><Link href={`/admin/polizas/${p.id}`} className="font-semibold text-brand-800 hover:underline">{p.compania}</Link><span className="block text-xs text-ink-soft">{p.ramo}</span></Td>
@@ -94,6 +94,12 @@ export default async function DetalleCliente({ params, searchParams }: Props) {
                 <Td>{fecha(p.hasta)}</Td>
                 <Td><Badge tono={p.estado === "vigente" ? "verde" : p.estado === "en_tramite" ? "ambar" : "gris"}>{ESTADOS_POLIZA[p.estado] ?? p.estado}</Badge></Td>
                 <Td>{p.docs ? `${p.docs} cargado${p.docs > 1 ? "s" : ""}` : <span className="text-amber-700">Faltan</span>}</Td>
+                <Td right>
+                  <div className="flex justify-end gap-2">
+                    <LinkBtn sm href={`/admin/polizas/${p.id}`}>Editar</LinkBtn>
+                    <form action={eliminarPoliza}><input type="hidden" name="id" value={p.id} /><input type="hidden" name="volver" value={`/admin/clientes/${cid}`} /><SubmitButton variant="danger" small confirmar={`¿Eliminar la póliza ${p.numero}? Se borran también sus cuotas, certificados y documentos.`} pendiente="Eliminando…">Eliminar</SubmitButton></form>
+                  </div>
+                </Td>
               </tr>
             ))}
           </Tabla>

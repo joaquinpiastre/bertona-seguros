@@ -3,7 +3,7 @@ import { dato, type Row } from "@/lib/api";
 import { notFound } from "next/navigation";
 import { SubmitButton } from "@/components/panel/Cliente";
 import { Badge, Card, Field, Flash, LinkBtn, PageHead, SelectField, Tabla, Td, TextArea, Th, inputCls } from "@/components/panel/ui";
-import { actualizarCuota, actualizarPoliza, agregarCuota, anularCuota, anularPoliza, cargarCertificado, eliminarCertificado, eliminarDocumento, reactivarPoliza, subirDocumento } from "@/lib/actions/admin";
+import { actualizarCuota, actualizarPoliza, agregarCuota, anularCuota, anularPoliza, cargarCertificado, eliminarCertificado, eliminarDocumento, eliminarPoliza, reactivarPoliza, subirDocumento } from "@/lib/actions/admin";
 import { ACTUALIZACION, COBROS, ESTADOS_POLIZA, PERIODICIDAD, RAMOS_LISTA, TIPOS_DOC, fecha, hoy, money, sumarMeses } from "@/lib/format";
 
 const diasEntre = (a: string, b: string) => Math.round((Date.parse(a) - Date.parse(b)) / 86400000);
@@ -77,6 +77,7 @@ export default async function DetallePoliza({ params, searchParams }: Props) {
           <SelectField label="Estado" name="estado" defaultValue={p.estado} options={Object.entries(ESTADOS_POLIZA)} />
           <SelectField label="¿Quién cobra?" name="cobro" defaultValue={p.cobro} options={Object.entries(COBROS)} className="lg:col-span-2" />
           <SelectField label="Se actualiza cada" name="actualizacion_meses" defaultValue={String(p.actualizacion_meses)} options={Object.entries(ACTUALIZACION)} />
+          <SelectField label="Las cuotas vencen cada" name="periodicidad" defaultValue={p.periodicidad} options={Object.entries(PERIODICIDAD).map(([v, x]) => [v, x.label])} />
           <TextArea label="Notas internas" name="notas" defaultValue={p.notas} className="sm:col-span-2 lg:col-span-3" />
           <div className="sm:col-span-2 lg:col-span-3 flex flex-wrap items-center gap-4">
             <SubmitButton>Guardar cambios</SubmitButton>
@@ -165,6 +166,22 @@ export default async function DetallePoliza({ params, searchParams }: Props) {
           <form action={anularPoliza}><input type="hidden" name="id" value={pid} /><SubmitButton variant="danger" small confirmar="¿Anular esta póliza? Queda inactiva y se puede reactivar." pendiente="Anulando…">Anular póliza</SubmitButton></form>
         </Card>
       )}
+
+      <Card title="Eliminar la póliza" className="mt-6">
+        <p className="mb-3 text-sm text-ink-soft">
+          Se borra para siempre junto con sus cuotas, certificados y documentos.
+          {p.npagos > 0 ? ` Tiene ${p.npagos} pago${p.npagos > 1 ? "s" : ""} registrado${p.npagos > 1 ? "s" : ""}: también se borran sus recibos. Si solo querés que deje de estar activa, mejor anulala.` : ""}
+        </p>
+        <form action={eliminarPoliza} className="flex flex-wrap items-end gap-3">
+          <input type="hidden" name="id" value={pid} />
+          {p.npagos > 0 && (
+            <label className="text-sm font-semibold text-brand-900">Para confirmar escribí ELIMINAR
+              <input name="confirmar" autoComplete="off" required className={inputCls} />
+            </label>
+          )}
+          <SubmitButton variant="danger" small confirmar="¿Eliminar esta póliza definitivamente?" pendiente="Eliminando…">Eliminar póliza</SubmitButton>
+        </form>
+      </Card>
 
       {porTarjeta && cuotas.length === 0 ? (
         <Card title="Cuotas" className="mt-6">

@@ -210,18 +210,38 @@ export async function actualizarPoliza(fd: FormData) {
   const desde = txt(fd, "vigencia_desde");
   const hasta = txt(fd, "vigencia_hasta");
   const cobro = txt(fd, "cobro") || "oficina";
+  const periodicidad = txt(fd, "periodicidad") || "mensual";
   const actualizacion = Number(txt(fd, "actualizacion_meses") || 0);
   if (!ramo || !compania || !numero) ir(volver, "error", "Ramo, compañía y número son obligatorios.");
-  if (!ESTADOS_POLIZA[estado] || !COBROS[cobro] || !ACTUALIZACION[String(actualizacion)]) ir(volver, "error", "Estado, cobro o actualización inválidos.");
+  if (!ESTADOS_POLIZA[estado] || !COBROS[cobro] || !PERIODICIDAD[periodicidad] || !ACTUALIZACION[String(actualizacion)]) ir(volver, "error", "Estado, cobro, frecuencia de cuotas o actualización inválidos.");
   if ((desde && !esFecha(desde)) || (hasta && !esFecha(hasta))) ir(volver, "error", "Fechas de vigencia inválidas.");
   const suma = num(fd, "suma_asegurada");
   await q(
     `UPDATE polizas SET ramo=$2, compania=$3, numero=$4, riesgo=$5, dominio=$6, suma_asegurada=$7,
-       vigencia_desde=$8, vigencia_hasta=$9, estado=$10, notas=$11, cobertura=$12, cobro=$13, actualizacion_meses=$14 WHERE id=$1`,
+       vigencia_desde=$8, vigencia_hasta=$9, estado=$10, notas=$11, cobertura=$12, cobro=$13, actualizacion_meses=$14, periodicidad=$15 WHERE id=$1`,
     [id, ramo, compania, numero, txtONull(fd, "riesgo"), txtONull(fd, "dominio")?.toUpperCase() ?? null,
-     Number.isFinite(suma) ? suma : null, desde || null, hasta || null, estado, txtONull(fd, "notas"), txtONull(fd, "cobertura"), cobro, actualizacion]
+     Number.isFinite(suma) ? suma : null, desde || null, hasta || null, estado, txtONull(fd, "notas"), txtONull(fd, "cobertura"), cobro, actualizacion, periodicidad]
   );
   ir(volver, "ok", "Póliza actualizada.");
+}
+
+/**
+ * Elimina la póliza con sus cuotas, certificados y documentos. Si tiene pagos registrados, también se borran sus recibos
+ * y por eso hay que escribir ELIMINAR (para no perder cobros por error, en ese caso conviene anularla).
+ */
+export async function eliminarPoliza(fd: FormData) {
+  await requireAdmin();
+  const id = Number(txt(fd, "id"));
+  const volver = txt(fd, "volver") || "/admin/polizas";
+  const p = await q1("SELECT cliente_id, (SELECT COUNT(*)::int FROM pagos WHERE poliza_id = polizas.id) AS pagos FROM polizas WHERE id = $1", [id]);
+  if (!p) ir(volver, "error", "La póliza ya no existe.");
+  if (p!.pagos > 0 && txt(fd, "confirmar") !== "ELIMINAR") {
+    ir(`/admin/polizas/${id}`, "error", `Esta póliza tiene ${p!.pagos} pago${p!.pagos > 1 ? "s" : ""} registrado${p!.pagos > 1 ? "s" : ""}. Para eliminarla junto con sus recibos escribí ELIMINAR en la sección "Eliminar la póliza" (si no, es mejor anularla).`);
+  }
+  await q("UPDATE alertas SET estado = 'resuelta', resuelta_en = now() WHERE poliza_id = $1 AND estado = 'pendiente'", [id]);
+  await q("DELETE FROM pagos WHERE poliza_id = $1", [id]);
+  await q("DELETE FROM polizas WHERE id = $1", [id]);
+  ir(volver.startsWith("/admin/polizas/") ? "/admin/polizas" : volver, "ok", "Póliza eliminada.");
 }
 
 export async function agregarCuota(fd: FormData) {
