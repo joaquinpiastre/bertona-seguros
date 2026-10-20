@@ -127,6 +127,60 @@ export const DETALLES: Detalle[] = [
     ],
     nota: "Las sumas aseguradas y exclusiones figuran en las condiciones de la póliza. Consultanos y te cotizamos.",
   },
+  {
+    slug: "viaje",
+    titulo: "Seguro de viaje",
+    bajada: "Viajá a donde quieras con asistencia médica, equipaje y cancelación de viaje para vos y tu familia.",
+    grupos: [
+      { titulo: "Asistencia médica", items: ["Asistencia por enfermedad o accidente, con topes que van desde USD 15.000 hasta USD 250.000 según el plan.", "Asistencia odontológica y medicamentos.", "Evacuación médica y repatriación sanitaria.", "Hotel por convalecencia y acompañante durante una internación prolongada."] },
+      { titulo: "Tu viaje y tu equipaje", items: ["Cancelación e interrupción del viaje.", "Regreso anticipado, acompañamiento de menores y viaje de un familiar, con pasaje en clase turista.", "Demora de viaje y demora o pérdida de equipaje."] },
+      { titulo: "Otras protecciones", items: ["Invalidez total y permanente y muerte accidental, las 24 horas.", "Fianzas y honorarios legales."] },
+    ],
+    beneficios: ["Modalidad individual, para viajes puntuales (también para grupos, colegios y asociaciones).", "Modalidad anual multiviaje: una sola póliza cubre los primeros 30 o 60 días de cada viaje del año."],
+    nota: "Información de Meridional Travel (2026). Las sumas dependen del plan elegido. Consultanos y te cotizamos.",
+  },
+  {
+    slug: "vida",
+    titulo: "Seguro de vida",
+    bajada: "Protección económica para tu familia y, si tenés empleados, para tu equipo de trabajo.",
+    grupos: [
+      { titulo: "Vida colectivo para empresas", items: ["Vida obligatorio: lo debe contratar el empleador para sus empleados en relación de dependencia; cubre la muerte por cualquier causa, las 24 horas, dentro y fuera del país.", "Vida colectivo optativo: capital según múltiplo de sueldos, capital uniforme o escalas, con cobertura de muerte, incapacidad y doble indemnización por muerte accidental. Se puede extender al cónyuge.", "Convenio mercantil y Ley de Contrato de Trabajo: coberturas por muerte e invalidez para el gremio mercantil y para cubrir obligaciones del empleador."] },
+      { titulo: "Beneficios", items: ["Seguridad económica para la familia.", "La indemnización llega libre de impuestos y de embargos.", "Las primas pueden deducirse del Impuesto a las Ganancias, dentro de los topes vigentes."] },
+    ],
+    nota: "Para seguros de vida individuales consultanos: te asesoramos según tu situación. Información de Meridional Seguros (2026).",
+  },
+  {
+    slug: "consorcios",
+    titulo: "Seguro de consorcios",
+    bajada: "Cuidá el edificio y a los copropietarios con una cobertura completa y asistencia las 24 horas.",
+    grupos: [
+      { titulo: "Coberturas", items: ["Incendio del edificio, con adicionales opcionales.", "Incendio o robo del contenido general.", "Reconstrucción y reparación.", "Robo de valores en caja fuerte.", "Cristales.", "Responsabilidad civil comprensiva básica (incluye carteles y linderos), con adicionales según la necesidad."] },
+      { titulo: "Asistencias", items: ["Electricidad, gas, plomería y destapaciones.", "Cerrajería, cristalería y vigilancia.", "Traslado y guarda de muebles."] },
+    ],
+    beneficios: ["Atención de siniestros todos los días, a toda hora.", "Coberturas adicionales sin cargo y opcionales."],
+    nota: "Información de Meridional Seguros (2026). Armamos la propuesta según el edificio: consultanos.",
+  },
+  {
+    slug: "rc",
+    titulo: "Responsabilidad civil",
+    bajada: "Respaldo ante el reclamo de un tercero por daños a personas o cosas.",
+    grupos: [
+      { titulo: "Qué cubre", items: ["Responsabilidad civil por operaciones: daños a personas o cosas de terceros en el ejercicio de tu actividad comercial o industrial.", "Responsabilidad civil por productos: daños causados por mercaderías o productos que producís, vendés, distribuís o manipulás, incluidos sus envases.", "Construcción y retiro de productos del mercado."] },
+      { titulo: "Para quién es", items: ["Alimentos, bebidas, bodegas, frigoríficos y frutícolas.", "Industrias, construcción y montaje.", "Hoteles, universidades, consorcios, eventos y ferias.", "Comercios, oficinas e inmobiliarias."] },
+    ],
+    nota: "Información de Meridional Seguros (2026). Las sumas y condiciones se definen para cada actividad.",
+  },
+  {
+    slug: "caucion",
+    titulo: "Seguro de caución",
+    bajada: "Garantías para licitaciones, obras, alquileres y trámites, sin inmovilizar capital ni usar tu línea bancaria.",
+    grupos: [
+      { titulo: "Tipos de garantía", items: ["Obras y suministros: mantenimiento de oferta, cumplimiento de contrato, anticipos y fondos de reparo.", "Aduaneras: importación y exportación temporaria, depósito fiscal y tránsito.", "Judiciales: contracautela y sustitución de medidas cautelares.", "Alquiler comercial: oficinas, galpones y predios, con respuesta en 24 a 48 horas.", "Profesionales y societarias, e impositivas ante organismos fiscales."] },
+      { titulo: "Cómo se contrata", items: ["Contanos qué obligación querés garantizar, ante quién y por qué monto.", "Se presenta la documentación según el tipo de empresa.", "La compañía califica el pedido (24 horas a 7 días hábiles).", "Se emite la póliza contra el contrato, pliego u orden de compra."] },
+    ],
+    beneficios: ["No inmoviliza fondos ni consume crédito bancario.", "Más ágil que un aval bancario.", "Cobertura en todo el país."],
+    nota: "Información de Meridional Seguros (2026). Cada garantía se evalúa en particular.",
+  },
 ];
 
 export const SINIESTROS = {
@@ -163,7 +217,7 @@ export const AUXILIO = {
   titulo: "Auxilio mecánico",
   intro: "Si tu auto o tu moto se quedan en la ruta, pedí asistencia: funciona las 24 horas, los 365 días del año.",
   pasos: [
-    "Escribí por WhatsApp al +54 9 11 6740 8247 (o llamá al 0800-333-3244).",
+    "Llamá por teléfono al 0800-333-3244.",
     "Tené a mano el número de tu póliza, el nombre del titular, los datos del vehículo y un teléfono de contacto.",
     "Si querés reintegro de algún gasto, la central tiene que autorizarlo antes; después presentás las facturas originales.",
   ],
@@ -190,7 +244,7 @@ export const AUXILIO = {
 };
 
 export const PAGOS = {
-  intro: "Pagá tu póliza como te quede más cómodo. Si tu póliza tiene cuponera o código de pago, pedínoslo por WhatsApp.",
+  intro: "Pagá tu póliza como te quede más cómodo. En Bertona podés pagar en la oficina o por transferencia, e informarlo desde tu cuenta; los demás medios dependen de tu póliza. Si tiene cuponera o código de pago, pedínoslo por WhatsApp.",
   medios: [
     { titulo: "Débito automático con tarjeta de crédito", texto: "Visa, MasterCard, American Express, Diners, Naranja y Cabal." },
     { titulo: "Débito directo de tu cuenta bancaria", texto: "Se debita todos los meses de tu cuenta corriente o caja de ahorro (CBU)." },
@@ -217,7 +271,7 @@ export const BAJA_RECLAMOS = {
 
 export const FAQ_MERIDIONAL = [
   { q: "¿Qué hago si tuve un choque?", a: "Resguardá a las personas, sacá fotos y avisanos enseguida por WhatsApp o llamando a Meridional al 0800-333-3244. Si hubo lesionados, usá la opción 2. En la sección Ayuda tenés la lista de datos y documentos que te van a pedir." },
-  { q: "¿Cómo pido el auxilio mecánico?", a: "Escribí por WhatsApp al +54 9 11 6740 8247 (las 24 horas) con el número de tu póliza y los datos del vehículo. Los kilómetros y la cantidad de servicios dependen de tu cobertura." },
+  { q: "¿Cómo pido el auxilio mecánico?", a: "Llamá al 0800-333-3244 (las 24 horas) con el número de tu póliza y los datos del vehículo a mano. Los kilómetros y la cantidad de servicios dependen de tu cobertura." },
   { q: "¿Cómo pago mi cuota?", a: "Podés usar débito automático, Pagomiscuentas, Pago Fácil, Rapipago, Mercado Pago o ventanilla bancaria, según tu póliza. Si necesitás tu cuponera o código de pago, pedínosla." },
   { q: "¿Cómo doy de baja mi seguro?", a: "Desde Mis pólizas en tu cuenta (botón Anular póliza), en la oficina o por WhatsApp. Te contactamos para confirmarlo." },
   { q: "¿Dónde presento un reclamo?", a: "Primero con nosotros. Si no te alcanza, con el Servicio de Atención al Asegurado de Meridional (4909-7173) y, en última instancia, ante la Superintendencia de Seguros de la Nación (0800-666-8400)." },

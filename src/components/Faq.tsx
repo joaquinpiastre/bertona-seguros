@@ -3,19 +3,19 @@ import { FAQ_MERIDIONAL } from "@/config/meridional";
 import { PlusIcon } from "./Icons";
 import { SectionTitle } from "./Section";
 
-export function Faq() {
+export function Faq({ fondo = true }: { fondo?: boolean }) {
   return (
-    <section id="faq" className="bg-soft py-20 sm:py-28">
+    <section id="faq" className={`py-20 sm:py-28 ${fondo ? "bg-sky-50" : ""}`}>
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
         <SectionTitle eyebrow="Preguntas frecuentes" title="Resolvemos tus dudas" />
-        <div className="border-t border-line">
+        <div className="space-y-3">
           {[...FAQ, ...FAQ_MERIDIONAL].map((f) => (
-            <details key={f.q} className="group border-b border-line">
-              <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 py-4 text-left font-display text-lg font-semibold text-brand-900 [&::-webkit-details-marker]:hidden">
+            <details key={f.q} className="group rounded-2xl border border-line bg-white shadow-card open:border-sky-500">
+              <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 px-6 py-4 text-left font-display text-lg font-bold text-brand-900 [&::-webkit-details-marker]:hidden">
                 {f.q}
-                <PlusIcon className="h-5 w-5 shrink-0 text-accent-600 transition-transform duration-300 group-open:rotate-45" />
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-sky-100 text-sky-600 transition group-open:rotate-45 group-open:bg-sky-500 group-open:text-white"><PlusIcon className="h-4 w-4" /></span>
               </summary>
-              <p className="pb-6 pr-8 leading-relaxed text-ink-soft">{f.a}</p>
+              <p className="px-6 pb-6 pr-12 leading-relaxed text-ink-soft">{f.a}</p>
             </details>
           ))}
         </div>

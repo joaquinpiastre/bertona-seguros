@@ -6,7 +6,7 @@
 // ───────── Datos verificados ─────────
 export const EMPRESA = {
   nombre: "Bertona Seguros",
-  nombreLargo: "Organización Bertona",
+  nombreLargo: "Grupo Bertona",
   rubro: "Productor asesor de seguros",
   // Otras fuentes indican "San Lorenzo 580": confirmar y editar acá.
   direccion: {
@@ -26,6 +26,9 @@ export const EMPRESA = {
   instagram: "https://www.instagram.com/seguros_bertona/",
   reputacion: { estrellas: 4.5, resenas: 35, seguidoresFacebook: "10 mil" },
 } as const;
+
+/** Cobranza: 2604006753. Siniestros y consultas: 2604568276 (telefonoVisible / whatsapp). */
+export const COBRANZA = { visible: "260 400-6753", tel: "+542604006753" } as const;
 
 export const DIRECCION_COMPLETA = `${EMPRESA.direccion.calle}, ${EMPRESA.direccion.ciudad}, ${EMPRESA.direccion.provincia}`;
 
@@ -71,20 +74,24 @@ export const RESENAS_GOOGLE: { texto: string; estrellas: number }[] = [
 
 // TODO: confirmar ramos exactos con el cliente.
 export type RamoId =
-  | "autos" | "motos" | "hogar" | "comercio" | "vida"
-  | "accidentes" | "art" | "agro" | "caucion" | "rc";
+  | "autos" | "motos" | "hogar" | "accidentes" | "viaje" | "vida"
+  | "comercio" | "consorcios" | "rc" | "caucion" | "art" | "agro";
 
-export const RAMOS: { id: RamoId; nombre: string; descripcion: string }[] = [
-  { id: "autos", nombre: "Autos", descripcion: "Cobertura para tu vehículo, desde responsabilidad civil hasta todo riesgo." },
-  { id: "motos", nombre: "Motos", descripcion: "Protegé tu moto y a terceros con planes simples y accesibles." },
-  { id: "hogar", nombre: "Hogar", descripcion: "Cuidá tu casa y tus pertenencias ante robo, incendio y más." },
-  { id: "comercio", nombre: "Comercio", descripcion: "Respaldo para tu local, mercadería y actividad comercial." },
-  { id: "vida", nombre: "Vida", descripcion: "Tranquilidad y protección económica para quienes más querés." },
-  { id: "accidentes", nombre: "Accidentes personales", descripcion: "Cobertura ante imprevistos, en el trabajo y en tu día a día." },
-  { id: "art", nombre: "ART / Riesgos del trabajo", descripcion: "Cumplí con la ley y cuidá a tu equipo con una ART acorde." },
-  { id: "agro", nombre: "Agro", descripcion: "Seguros para cosechas, maquinaria y producción de campo." },
-  { id: "caucion", nombre: "Caución", descripcion: "Garantías para contratos, alquileres y obras, sin inmovilizar capital." },
-  { id: "rc", nombre: "Responsabilidad civil", descripcion: "Protección ante reclamos de terceros por daños involuntarios." },
+export type Ramo = { id: RamoId; nombre: string; grupo: "personas" | "empresas"; corto: string; descripcion: string };
+
+export const RAMOS: Ramo[] = [
+  { id: "autos", nombre: "Autos", grupo: "personas", corto: "Desde terceros hasta todo riesgo", descripcion: "Cobertura para tu vehículo, desde responsabilidad civil hasta todo riesgo con franquicia." },
+  { id: "motos", nombre: "Motos", grupo: "personas", corto: "Con asistencia y grúa 24 h", descripcion: "Protegé tu moto y a terceros con planes simples y accesibles." },
+  { id: "hogar", nombre: "Hogar", grupo: "personas", corto: "Incendio, robo y mucho más", descripcion: "Cuidá tu casa y tus pertenencias ante robo, incendio, agua y más." },
+  { id: "accidentes", nombre: "Accidentes personales", grupo: "personas", corto: "Protección para vos y tu familia", descripcion: "Cobertura ante imprevistos, en el trabajo y en tu día a día." },
+  { id: "viaje", nombre: "Viajes", grupo: "personas", corto: "Asistencia al viajero", descripcion: "Viajá tranquilo con asistencia médica, equipaje y cancelación de viaje." },
+  { id: "vida", nombre: "Vida", grupo: "personas", corto: "Tranquilidad para los tuyos", descripcion: "Tranquilidad y protección económica para quienes más querés." },
+  { id: "comercio", nombre: "Comercio", grupo: "empresas", corto: "Hecho a medida de tu negocio", descripcion: "Respaldo para tu local, mercadería y actividad comercial." },
+  { id: "consorcios", nombre: "Consorcios", grupo: "empresas", corto: "Edificio y responsabilidad civil", descripcion: "Cuidá el edificio y a los copropietarios ante incendio, daños y reclamos." },
+  { id: "rc", nombre: "Responsabilidad civil", grupo: "empresas", corto: "Reclamos de terceros", descripcion: "Protección ante reclamos de terceros por daños involuntarios." },
+  { id: "caucion", nombre: "Caución", grupo: "empresas", corto: "Garantías sin inmovilizar capital", descripcion: "Garantías para contratos, alquileres y obras, sin inmovilizar capital." },
+  { id: "art", nombre: "ART / Riesgos del trabajo", grupo: "empresas", corto: "Cuidá a tu equipo", descripcion: "Cumplí con la ley y cuidá a tu equipo con una ART acorde." },
+  { id: "agro", nombre: "Agro", grupo: "empresas", corto: "Cosechas y maquinaria", descripcion: "Seguros para cosechas, maquinaria y producción de campo." },
 ];
 
 // TODO: ajustar textos de historia/valores y datos del equipo.

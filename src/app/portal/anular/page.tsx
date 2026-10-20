@@ -13,22 +13,22 @@ export default async function Anular({ searchParams }: { searchParams: Promise<{
 
   return (
     <>
-      <h1 className="mb-6 text-2xl text-brand-900 sm:text-3xl">Anular póliza</h1>
+      <h1 className="mb-6 text-2xl text-brand-900 sm:text-3xl">Pedir la baja de una póliza</h1>
       <Flash sp={sp} />
       {!p ? (
         <Card><p className="text-sm text-ink-soft">No encontramos esa póliza. <Link href="/portal/polizas" className="font-semibold underline">Volver a Mis pólizas</Link>.</p></Card>
       ) : (
         <Card title={`${p.compania} · ${p.ramo}`}>
           <p className="text-sm text-ink-soft">Póliza <strong className="text-brand-900">{p.numero}</strong>{p.riesgo ? ` · ${p.riesgo}` : ""}{p.dominio ? ` · ${p.dominio}` : ""}</p>
-          <div className="my-5 border-l-4 border-red-600 bg-red-50 px-4 py-3 text-sm text-red-900">
-            Al confirmar, le avisamos a la oficina que querés anular esta póliza. <strong>La póliza no se anula en el momento</strong>: te van a contactar para confirmarlo. Mientras tanto seguís cubierto.
-          </div>
+          <p className="my-5 text-sm text-ink-soft">
+            Si querés dar de baja esta póliza, avisanos y la oficina se comunica con vos para confirmarlo. <strong className="text-brand-900">No se anula en el momento</strong>: seguís cubierto hasta que lo confirmemos. Después te mostramos un botón para mandarnos el pedido por WhatsApp.
+          </p>
           <form action={solicitarBaja} className="space-y-4">
             <input type="hidden" name="poliza_id" value={p.id} />
             <TextArea label="¿Por qué querés anularla? (opcional)" name="motivo" rows={3} />
             <div className="flex flex-col gap-3 sm:flex-row">
-              <SubmitButton variant="danger" confirmar="¿Seguro que querés pedir la anulación de esta póliza?" pendiente="Enviando…">Sí, quiero anular mi póliza</SubmitButton>
-              <Link href="/portal/polizas" className="inline-flex items-center justify-center border border-line bg-white px-4 py-2.5 text-sm font-semibold text-brand-800 hover:border-brand-500">No, volver</Link>
+              <SubmitButton variant="gold" pendiente="Enviando…">Pedir la baja de mi póliza</SubmitButton>
+              <Link href="/portal/polizas" className="inline-flex items-center justify-center border border-line bg-white px-4 py-2.5 text-sm font-semibold text-brand-800 hover:border-brand-500">Volver</Link>
             </div>
           </form>
         </Card>

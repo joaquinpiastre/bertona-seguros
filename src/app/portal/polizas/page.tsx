@@ -6,7 +6,7 @@ import { dato, type Row } from "@/lib/api";
 import { portalUsuario } from "@/lib/auth";
 import { ESTADOS_POLIZA, PERIODICIDAD, TIPOS_DOC, fecha, money } from "@/lib/format";
 
-export default async function MisPolizas({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
+export default async function MisPolizas({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string; wa?: string }> }) {
   const sp = await searchParams;
   await portalUsuario();
   const { polizas, docs, bloqueadas } = await dato<{ polizas: Row[]; docs: Row[]; bloqueadas: Row[] }>("portalPolizas");
@@ -15,6 +15,12 @@ export default async function MisPolizas({ searchParams }: { searchParams: Promi
     <>
       <h1 className="mb-6 text-2xl text-brand-900 sm:text-3xl">Mis pólizas</h1>
       <Flash sp={sp} />
+      {sp.wa && (
+        <div className="mb-6 flex flex-wrap items-center gap-3 border-l-4 border-emerald-600 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          <span>Para que lo veamos más rápido, mandanos el pedido por WhatsApp.</span>
+          <a href={waLink(sp.wa)} target="_blank" rel="noopener noreferrer" className="bg-[#1fa855] px-4 py-2.5 font-semibold text-white hover:bg-[#188a45]">Enviar por WhatsApp</a>
+        </div>
+      )}
       {polizas.length === 0 && bloqueadas.length === 0 && (
         <Card><p className="text-sm text-ink-soft">Todavía no tenés pólizas cargadas. Si ya contrataste un seguro con nosotros, avisanos y lo cargamos.</p></Card>
       )}
@@ -47,10 +53,10 @@ export default async function MisPolizas({ searchParams }: { searchParams: Promi
               </div>
               <div className="mt-5 border-t border-line pt-5">
                 {p.baja_pedida ? (
-                  <p className="border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-900">Ya pediste anular esta póliza. La oficina se va a comunicar con vos para confirmarlo.</p>
+                  <p className="border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-900">Ya pediste la baja de esta póliza. La oficina se va a comunicar con vos para confirmarlo.</p>
                 ) : (
-                  <Link href={`/portal/anular?poliza=${p.id}`} className="flex w-full items-center justify-center border-2 border-red-700 bg-red-700 px-6 py-5 text-xl font-bold uppercase tracking-wide text-white transition hover:bg-red-800">
-                    Anular póliza
+                  <Link href={`/portal/anular?poliza=${p.id}`} className="text-sm font-semibold text-ink-soft underline underline-offset-4 hover:text-brand-700">
+                    ¿Querés dar de baja esta póliza?
                   </Link>
                 )}
               </div>

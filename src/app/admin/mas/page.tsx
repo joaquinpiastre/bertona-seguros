@@ -13,7 +13,7 @@ export default async function Mas() {
     { href: "/admin/polizas", titulo: "Pólizas", texto: "Todas las pólizas cargadas", icono: "polizas" },
     { href: "/admin/siniestros", titulo: "Siniestros", texto: "Casillero de siniestros", icono: "siniestros" },
     { href: "/admin/pagos", titulo: "Pagos y caja", texto: "Cobros del día y del mes, exportar a Excel", icono: "pagos" },
-    { href: "/admin/configuracion", titulo: "Configuración", texto: "Auxilio mecánico, Mercado Pago y días de gracia", icono: "config" },
+    { href: "/admin/configuracion", titulo: "Configuración", texto: "Auxilio mecánico, datos de transferencia y días de gracia", icono: "config" },
     { href: "/admin/equipo", titulo: "Equipo", texto: "Personas con acceso al panel", icono: "equipo" },
   ];
   return (

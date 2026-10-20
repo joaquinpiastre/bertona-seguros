@@ -45,8 +45,25 @@ export const PERIODICIDAD: Record<string, { label: string; meses: number }> = {
   mensual: { label: "Mensual", meses: 1 },
   bimestral: { label: "Bimestral", meses: 2 },
   trimestral: { label: "Trimestral", meses: 3 },
+  cuatrimestral: { label: "Cuatrimestral", meses: 4 },
   semestral: { label: "Semestral", meses: 6 },
   anual: { label: "Anual", meses: 12 },
+};
+
+/** Quién cobra la póliza: la oficina (efectivo / transferencia) o la compañía con la tarjeta del cliente. */
+export const COBROS: Record<string, string> = {
+  oficina: "Lo cobramos nosotros (efectivo / transferencia)",
+  credito: "Tarjeta de crédito (lo cobra la compañía)",
+  debito: "Tarjeta de débito (lo cobra la compañía)",
+};
+
+/** Cada cuántos meses se actualiza la póliza y hay que renovar el certificado (0 = no se actualiza). */
+export const ACTUALIZACION: Record<string, string> = {
+  "0": "Sin actualización",
+  "3": "Trimestral (cada 3 meses)",
+  "4": "Cuatrimestral (cada 4 meses)",
+  "6": "Semestral (cada 6 meses)",
+  "12": "Anual (cada 12 meses)",
 };
 
 export const ESTADOS_POLIZA: Record<string, string> = {
@@ -61,6 +78,9 @@ export const TIPOS_DOC: Record<string, string> = {
   certificado: "Certificado de cobertura",
   recibo: "Recibo",
   comprobante: "Comprobante de pago",
+  carnet: "Carnet de conducir",
+  cedula_verde: "Cédula verde",
+  siniestro: "Foto o documento del siniestro",
   otro: "Otro",
 };
 

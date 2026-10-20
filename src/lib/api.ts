@@ -59,12 +59,12 @@ export async function iniciarSesion(email: string, password: string): Promise<{ 
   return r.json().catch(() => ({ error: "No se pudo conectar con el servidor." }));
 }
 
-export async function iniciarSesionDni(dni: string, pin: string, ip: string): Promise<{ token?: string; rol?: string; error?: string; needsPin?: boolean }> {
+export async function iniciarSesionDni(dni: string, password: string, ip: string): Promise<{ token?: string; rol?: string; error?: string; noEncontrado?: boolean }> {
   const { base } = config();
   const r = await fetch(`${base}/auth/login-dni`, {
     method: "POST",
     headers: { ...(await cabeceras()), "content-type": "application/json" },
-    body: JSON.stringify({ dni, pin, ip }),
+    body: JSON.stringify({ dni, password, ip }),
     cache: "no-store",
   });
   return r.json().catch(() => ({ error: "No se pudo conectar con el servidor." }));

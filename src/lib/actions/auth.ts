@@ -15,18 +15,15 @@ export async function login(fd: FormData) {
   redirect(r.rol === "admin" ? "/admin" : "/portal");
 }
 
-/** Ingreso de clientes: solo con el DNI (y su clave, si la activó). */
+/** Ingreso de clientes: DNI y contraseña (la define la oficina). */
 export async function loginDni(fd: FormData) {
   const dni = String(fd.get("dni") ?? "").replace(/\D/g, "");
-  const pin = String(fd.get("pin") ?? "");
+  const password = String(fd.get("password") ?? "");
   const h = await headers();
   const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || "sin-ip";
-  const r = await iniciarSesionDni(dni, pin, ip);
-  if (r.needsPin) {
-    if (r.error) ir(`/ingresar?dni=${dni}&pin=1`, "error", r.error);
-    redirect(`/ingresar?dni=${dni}&pin=1`);
-  }
-  if (r.error || !r.token) ir("/ingresar", "error", r.error ?? "No se pudo ingresar.");
+  const r = await iniciarSesionDni(dni, password, ip);
+  if (r.noEncontrado) ir(`/ingresar?noenc=1&dni=${dni}`, "error", r.error ?? "No encontramos un cliente con ese DNI.");
+  if (r.error || !r.token) ir(`/ingresar?dni=${dni}`, "error", r.error ?? "No se pudo ingresar.");
   await guardarSesion(r.token!);
   redirect("/portal");
 }

@@ -15,6 +15,19 @@ export async function firmarToken(uid: number) {
   return new SignJWT({ uid }).setProtectedHeader({ alg: "HS256" }).setExpirationTime("7d").sign(secret());
 }
 
+/** Enlace público (sin ingreso) a un recibo, para mandarlo por WhatsApp. Vale 120 días. */
+export async function firmarTokenRecibo(pagoId: number) {
+  return new SignJWT({ rid: pagoId, k: "recibo" }).setProtectedHeader({ alg: "HS256" }).setExpirationTime("120d").sign(secret());
+}
+export async function pagoDeTokenRecibo(token: string): Promise<number | null> {
+  try {
+    const { payload } = await jwtVerify(token, secret());
+    return payload.k === "recibo" ? Number(payload.rid) : null;
+  } catch {
+    return null;
+  }
+}
+
 export type Usuario = {
   id: number;
   email: string;

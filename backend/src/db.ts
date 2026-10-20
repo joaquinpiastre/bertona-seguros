@@ -218,6 +218,37 @@ CREATE INDEX IF NOT EXISTS idx_pagos_cliente ON pagos(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_pagos_fecha ON pagos(fecha);
 CREATE INDEX IF NOT EXISTS idx_docs_poliza ON documentos(poliza_id);
 CREATE INDEX IF NOT EXISTS idx_docs_pago ON documentos(pago_id);
+
+-- ── Recibo único para varias cuotas pagadas juntas (mismo N° de recibo en cada fila) ──
+ALTER TABLE pagos DROP CONSTRAINT IF EXISTS pagos_recibo_nro_key;
+CREATE INDEX IF NOT EXISTS idx_pagos_recibo ON pagos(recibo_nro);
+CREATE TABLE IF NOT EXISTS aviso_cuotas (
+  aviso_id INT NOT NULL REFERENCES avisos_pago(id) ON DELETE CASCADE,
+  cuota_id INT NOT NULL REFERENCES cuotas(id) ON DELETE CASCADE,
+  PRIMARY KEY (aviso_id, cuota_id)
+);
+INSERT INTO aviso_cuotas (aviso_id, cuota_id) SELECT id, cuota_id FROM avisos_pago WHERE cuota_id IS NOT NULL ON CONFLICT DO NOTHING;
+
+-- ── Contraseña de ingreso de los socios (la define la oficina) ──
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS tiene_clave BOOLEAN NOT NULL DEFAULT FALSE;
+UPDATE usuarios SET password_hash = pin_hash, tiene_clave = TRUE WHERE rol = 'socio' AND pin_hash IS NOT NULL AND NOT tiene_clave;
+UPDATE usuarios SET pin_hash = NULL WHERE rol = 'socio' AND tiene_clave AND pin_hash IS NOT NULL;
+
+-- ── Cobro por tarjeta y actualización periódica (ej. cuatrimestral) con certificado por período ──
+-- cobro: 'oficina' (lo cobramos nosotros) | 'credito' | 'debito' (lo cobra la compañía con la tarjeta del cliente).
+-- periodicidad pasa a ser solo la frecuencia de las cuotas; actualizacion_meses es cada cuánto se actualiza la póliza (0 = nunca).
+ALTER TABLE polizas ADD COLUMN IF NOT EXISTS cobro TEXT NOT NULL DEFAULT 'oficina';
+ALTER TABLE polizas ADD COLUMN IF NOT EXISTS actualizacion_meses INT NOT NULL DEFAULT 0;
+CREATE TABLE IF NOT EXISTS certificados (
+  id SERIAL PRIMARY KEY,
+  poliza_id INT NOT NULL REFERENCES polizas(id) ON DELETE CASCADE,
+  desde DATE NOT NULL,
+  hasta DATE NOT NULL,
+  documento_id INT REFERENCES documentos(id) ON DELETE SET NULL,
+  nota TEXT,
+  creado TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_certificados_poliza ON certificados(poliza_id);
 `;
 
 async function inicializar(r: Runner) {
@@ -225,12 +256,11 @@ async function inicializar(r: Runner) {
   // Contenido inicial del auxilio mecánico (información de Meridional Seguros). Se puede editar en Configuración.
   const semillas: Record<string, string> = {
     auxilio_telefono: "0800-333-3244",
-    auxilio_whatsapp: "+54 9 11 6740 8247",
     auxilio_texto: [
       "El servicio funciona las 24 horas, los 365 días del año.",
       "",
       "Cómo se pide:",
-      "1. Escribí por WhatsApp o llamá al número de atención al cliente.",
+      "1. Llamá por teléfono al número de atención al cliente.",
       "2. Tené a mano el número de tu póliza, el nombre del titular, los datos del vehículo y un teléfono de contacto.",
       "3. Si querés reintegro de algún gasto, la central tiene que autorizarlo antes; después presentás las facturas originales.",
       "",

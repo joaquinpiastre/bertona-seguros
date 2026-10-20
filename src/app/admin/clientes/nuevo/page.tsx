@@ -20,6 +20,7 @@ export default async function NuevoCliente({ searchParams }: { searchParams: Pro
               <input type="checkbox" name="es_agencia" defaultChecked={false} className="h-4 w-4 accent-[var(--brand-700)]" />
               Es cliente de agencia
             </label>
+          <Field label="Contraseña inicial (opcional)" name="clave" autoComplete="off" hint="Mínimo 4 caracteres. Si la dejás vacía se genera una de 6 números y te la mostramos para pasársela al cliente." className="sm:col-span-2" />
           <TextArea label="Notas internas" name="notas" className="sm:col-span-2" />
           <div className="sm:col-span-2"><SubmitButton variant="gold">Crear cliente</SubmitButton></div>
         </form>

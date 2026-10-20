@@ -1,6 +1,6 @@
 import { SubmitButton } from "@/components/panel/Cliente";
 import { Badge, Card, Dato, Field, Flash } from "@/components/panel/ui";
-import { actualizarPerfil, configurarPin } from "@/lib/actions/portal";
+import { actualizarPerfil, cambiarClave } from "@/lib/actions/portal";
 import { dato, type Row } from "@/lib/api";
 import { portalUsuario } from "@/lib/auth";
 
@@ -27,22 +27,15 @@ export default async function Perfil({ searchParams }: { searchParams: Promise<{
           </form>
         </Card>
 
-        <Card title="Seguridad de tu cuenta">
-          <p className="text-sm text-ink-soft">Ingresás a tu cuenta solo con tu DNI. Si querés más protección, podés sumar una clave numérica: desde ese momento te la pedimos junto con el DNI.</p>
-          <p className="mt-3">{acceso?.tiene_pin ? <Badge tono="verde">Tenés una clave activada</Badge> : <Badge>Sin clave: ingresás solo con el DNI</Badge>}</p>
-          <form action={configurarPin} className="mt-4 grid gap-4">
-            <Field label={acceso?.tiene_pin ? "Nueva clave (4 a 8 números)" : "Clave (4 a 8 números)"} name="pin" type="password" inputMode="numeric" autoComplete="new-password" />
-            <Field label="Repetir clave" name="repetir" type="password" inputMode="numeric" autoComplete="new-password" />
-            <div className="flex flex-wrap gap-3">
-              <SubmitButton variant="gold">{acceso?.tiene_pin ? "Cambiar clave" : "Activar clave"}</SubmitButton>
-            </div>
+        <Card title="Cambiar mi contraseña">
+          <p className="text-sm text-ink-soft">Ingresás con tu DNI y la contraseña que te dio la oficina. Si querés, cambiala por una que recuerdes mejor.</p>
+          <p className="mt-3">{acceso?.tiene_clave ? <Badge tono="verde">Tu cuenta tiene contraseña</Badge> : <Badge tono="ambar">Todavía no tenés contraseña</Badge>}</p>
+          <form action={cambiarClave} className="mt-4 grid gap-4">
+            <Field label="Contraseña actual" name="actual" type="password" required autoComplete="current-password" />
+            <Field label="Contraseña nueva (mínimo 4 caracteres)" name="nueva" type="password" required autoComplete="new-password" />
+            <Field label="Repetir la contraseña nueva" name="repetir" type="password" required autoComplete="new-password" />
+            <div><SubmitButton variant="gold">Cambiar contraseña</SubmitButton></div>
           </form>
-          {acceso?.tiene_pin && (
-            <form action={configurarPin} className="mt-3 border-t border-line pt-3">
-              <input type="hidden" name="accion" value="quitar" />
-              <SubmitButton variant="ghost" small confirmar="¿Quitar la clave? Vas a ingresar solo con el DNI.">Quitar mi clave</SubmitButton>
-            </form>
-          )}
         </Card>
       </div>
     </>

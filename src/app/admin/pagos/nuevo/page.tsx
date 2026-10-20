@@ -4,7 +4,7 @@ import { Card, Flash, PageHead, SelectField, btnPrimary } from "@/components/pan
 import { registrarPago } from "@/lib/actions/admin";
 import { hoy } from "@/lib/format";
 
-type SP = Promise<{ ok?: string; error?: string; cliente?: string; cuota?: string; aviso?: string }>;
+type SP = Promise<{ ok?: string; error?: string; cliente?: string; cuota?: string; aviso?: string; todas?: string }>;
 
 export default async function NuevoCobro({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
@@ -16,7 +16,7 @@ export default async function NuevoCobro({ searchParams }: { searchParams: SP })
 
   return (
     <>
-      <PageHead title="Registrar cobro" sub="Se registran pagos en efectivo o por Mercado Pago, con el importe de la cuota y la fecha de hoy" />
+      <PageHead title="Registrar cobro" sub="Se registran pagos en efectivo o por transferencia, con el importe de la cuota y la fecha de hoy" />
       <Flash sp={sp} />
       <Card title="1. Cliente" className="mb-6">
         <form method="get" className="flex flex-wrap items-end gap-3">
@@ -31,6 +31,15 @@ export default async function NuevoCobro({ searchParams }: { searchParams: SP })
             clienteId={cliente.id}
             hoy={h}
             cuotaInicial={cuotaId || undefined}
+            cuotasIniciales={
+              Array.isArray(aviso?.cuotas) && (aviso!.cuotas as number[]).length
+                ? (aviso!.cuotas as number[])
+                : sp.todas === "vencidas"
+                  ? cuotas.filter((c) => c.vencimiento < h).map((c) => c.id as number)
+                  : sp.todas
+                    ? cuotas.map((c) => c.id as number)
+                    : []
+            }
             cuotas={cuotas.map((c) => ({ id: c.id, poliza: c.poliza, compania: c.compania, dominio: c.dominio, numero: c.numero, total: c.total, vencimiento: c.vencimiento, importe: c.importe, vencida: c.vencimiento < h }))}
           />
         </Card>

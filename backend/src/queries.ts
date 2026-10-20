@@ -34,19 +34,26 @@ export async function listarPagos(f: FiltroPagos) {
   );
 }
 
-export async function datosRecibo(pagoId: number) {
-  return q1(
-    `SELECT pg.id, pg.recibo_nro, pg.fecha::text AS fecha, pg.importe::float8 AS importe, pg.metodo, pg.estado, pg.cliente_id,
-            cl.nombre AS cliente, p.numero AS poliza, p.riesgo, p.dominio, p.compania, p.cuotas_cant,
-            c.numero AS cuota_n, c.vencimiento::text AS vto,
-            (SELECT n.vencimiento::text FROM cuotas n
-               WHERE c.id IS NOT NULL AND n.poliza_id = pg.poliza_id AND n.numero > c.numero AND n.estado <> 'anulada'
-               ORDER BY n.numero LIMIT 1) AS prox
-     FROM pagos pg
-     JOIN clientes cl ON cl.id = pg.cliente_id
-     LEFT JOIN polizas p ON p.id = pg.poliza_id
-     LEFT JOIN cuotas c ON c.id = pg.cuota_id
-     WHERE pg.id = $1`,
+/** Datos de un recibo: la cabecera y todas las cuotas que cubre (mismo N° de recibo). */
+export async function datosReciboGrupo(pagoId: number) {
+  const cab = await q1(
+    `SELECT pg.id, pg.recibo_nro, pg.cliente_id, pg.fecha::text AS fecha, pg.metodo, pg.estado, cl.nombre AS cliente, cl.documento AS documento
+     FROM pagos pg JOIN clientes cl ON cl.id = pg.cliente_id WHERE pg.id = $1`,
     [pagoId]
   );
+  if (!cab) return null;
+  const lineas = await q(
+    `SELECT pg.id, pg.poliza_id, pg.importe::float8 AS importe, p.numero AS poliza, p.riesgo, p.dominio, p.compania, p.cuotas_cant,
+            c.numero AS cuota_n, c.vencimiento::text AS vto,
+            (SELECT n.vencimiento::text FROM cuotas n
+               WHERE c.id IS NOT NULL AND n.poliza_id = pg.poliza_id AND n.numero > c.numero AND n.estado = 'pendiente'
+               ORDER BY n.numero LIMIT 1) AS prox
+     FROM pagos pg
+     LEFT JOIN polizas p ON p.id = pg.poliza_id
+     LEFT JOIN cuotas c ON c.id = pg.cuota_id
+     WHERE pg.recibo_nro = $1 AND pg.cliente_id = $2
+     ORDER BY p.id, c.numero`,
+    [cab.recibo_nro, cab.cliente_id]
+  );
+  return { cab, lineas };
 }

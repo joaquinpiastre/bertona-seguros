@@ -2,9 +2,9 @@ import bcrypt from "bcryptjs";
 import { requireAdmin } from "../auth";
 import { leerArchivo, type Archivo } from "../archivos";
 import { q, q1 } from "../db";
-import { guardarDoc, recalcularCuota, registrarPagoCore, soloDigitos, sincronizarUsuarioSocio } from "../core";
-import { EMAIL_RE, ir, num, txt, txtONull } from "../flash";
-import { ESTADOS_POLIZA, PERIODICIDAD, TIPOS_DOC, esFecha, hoy, sumarMeses } from "../format";
+import { claveNueva, fijarClave, guardarDoc, recalcularCuota, registrarPagosCuotas, soloDigitos, sincronizarUsuarioSocio } from "../core";
+import { EMAIL_RE, Redirigir, ir, num, txt, txtONull } from "../flash";
+import { ACTUALIZACION, COBROS, ESTADOS_POLIZA, PERIODICIDAD, TIPOS_DOC, esFecha, hoy, sumarMeses } from "../format";
 
 // ───────── Utilidades ─────────
 async function archivoSeguro(fd: FormData, campo: string, volver: string): Promise<Archivo | null> {
@@ -44,7 +44,11 @@ export async function crearCliente(fd: FormData) {
   );
   const sync = await sincronizarUsuarioSocio(r!.id);
   if (!sync.ok) ir(`/admin/clientes/${r!.id}`, "error", `Cliente creado, pero no se pudo habilitar el ingreso: ${sync.motivo}`);
-  ir(`/admin/clientes/${r!.id}`, "ok", "Cliente creado. Ya puede ingresar al portal con su DNI.");
+  const u = await q1("SELECT id FROM usuarios WHERE cliente_id = $1 AND rol = 'socio' LIMIT 1", [r!.id]);
+  const clave = fd.get("clave") ? String(fd.get("clave")).trim() : claveNueva();
+  if (clave.length < 4) ir(`/admin/clientes/${r!.id}`, "error", "Cliente creado, pero la contraseña debe tener al menos 4 caracteres: definila desde acá.");
+  await fijarClave(u!.id, clave);
+  throw new Redirigir(`/admin/clientes/${r!.id}?ok=${encodeURIComponent("Cliente creado. Ya puede ingresar con su DNI y la contraseña que figura abajo.")}&clave=${encodeURIComponent(clave)}`);
 }
 
 export async function actualizarCliente(fd: FormData) {
@@ -73,11 +77,17 @@ export async function alternarCliente(fd: FormData) {
   ir(`/admin/clientes/${id}`, "ok", "Estado del cliente actualizado.");
 }
 
-export async function quitarPinCliente(fd: FormData) {
+/** La oficina define (o cambia) la contraseña de ingreso del cliente. Si se deja vacía se genera una de 6 números. */
+export async function definirClaveCliente(fd: FormData) {
   await requireAdmin();
   const cid = Number(txt(fd, "cliente_id"));
-  await q("UPDATE usuarios SET pin_hash = NULL WHERE cliente_id = $1 AND rol = 'socio'", [cid]);
-  ir(`/admin/clientes/${cid}`, "ok", "Se quitó la clave del cliente: vuelve a ingresar solo con su DNI.");
+  const volver = `/admin/clientes/${cid}`;
+  const u = await q1("SELECT id FROM usuarios WHERE cliente_id = $1 AND rol = 'socio' LIMIT 1", [cid]);
+  if (!u) ir(volver, "error", "El cliente no tiene acceso habilitado: revisá que tenga DNI cargado y guardá sus datos.");
+  const clave = txt(fd, "clave") || claveNueva();
+  if (clave.length < 4) ir(volver, "error", "La contraseña debe tener al menos 4 caracteres.");
+  await fijarClave(u!.id, clave);
+  throw new Redirigir(`${volver}?ok=${encodeURIComponent("Contraseña guardada. Pasásela al cliente.")}&clave=${encodeURIComponent(clave)}`);
 }
 
 export async function restablecerPassword(fd: FormData) {
@@ -146,18 +156,21 @@ export async function crearPoliza(fd: FormData) {
   const compania = txt(fd, "compania");
   const numero = txt(fd, "numero");
   const periodicidad = txt(fd, "periodicidad") || "mensual";
-  const cuotasCant = Math.round(num(fd, "cuotas_cant"));
-  const importe = num(fd, "importe_cuota");
+  const cobro = txt(fd, "cobro") || "oficina";
+  const actualizacion = Number(txt(fd, "actualizacion_meses") || 0);
+  const conCuotas = cobro === "oficina"; // con tarjeta cobra la compañía: no hay cuotas que gestionar acá
+  const cuotasCant = conCuotas ? Math.round(num(fd, "cuotas_cant")) : 0;
+  const importe = num(fd, "importe_cuota") || 0;
   const primerVenc = txt(fd, "primer_vencimiento");
   const desde = txt(fd, "vigencia_desde");
   const hasta = txt(fd, "vigencia_hasta");
   const estado = txt(fd, "estado") || "vigente";
   if (!cid || !(await q1("SELECT 1 FROM clientes WHERE id = $1", [cid]))) ir(volver, "error", "Elegí un cliente.");
   if (!ramo || !compania || !numero) ir(volver, "error", "Ramo, compañía y número de póliza son obligatorios.");
-  if (!PERIODICIDAD[periodicidad] || !ESTADOS_POLIZA[estado]) ir(volver, "error", "Datos de póliza inválidos.");
-  if (!(cuotasCant >= 1 && cuotasCant <= 60)) ir(volver, "error", "La cantidad de cuotas debe estar entre 1 y 60.");
+  if (!PERIODICIDAD[periodicidad] || !ESTADOS_POLIZA[estado] || !COBROS[cobro] || !ACTUALIZACION[String(actualizacion)]) ir(volver, "error", "Datos de póliza inválidos.");
+  if (conCuotas && !(cuotasCant >= 1 && cuotasCant <= 60)) ir(volver, "error", "La cantidad de cuotas debe estar entre 1 y 60.");
   if (!(importe >= 0)) ir(volver, "error", "El importe de la cuota no es válido.");
-  if (!esFecha(primerVenc)) ir(volver, "error", "Indicá el vencimiento de la primera cuota.");
+  if (conCuotas && !esFecha(primerVenc)) ir(volver, "error", "Indicá el vencimiento de la primera cuota.");
   if ((desde && !esFecha(desde)) || (hasta && !esFecha(hasta))) ir(volver, "error", "Fechas de vigencia inválidas.");
   const fPoliza = await archivoSeguro(fd, "archivo_poliza", volver);
   const fCert = await archivoSeguro(fd, "archivo_certificado", volver);
@@ -165,10 +178,10 @@ export async function crearPoliza(fd: FormData) {
 
   const p = await q1(
     `INSERT INTO polizas (cliente_id, ramo, compania, numero, riesgo, dominio, suma_asegurada, periodicidad,
-       cuotas_cant, importe_cuota, vigencia_desde, vigencia_hasta, estado, notas, cobertura)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
+       cuotas_cant, importe_cuota, vigencia_desde, vigencia_hasta, estado, notas, cobertura, cobro, actualizacion_meses)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING id`,
     [cid, ramo, compania, numero, txtONull(fd, "riesgo"), txtONull(fd, "dominio")?.toUpperCase() ?? null,
-     Number.isFinite(suma) ? suma : null, periodicidad, cuotasCant, importe, desde || null, hasta || null, estado, txtONull(fd, "notas"), txtONull(fd, "cobertura")]
+     Number.isFinite(suma) ? suma : null, periodicidad, cuotasCant, importe, desde || null, hasta || null, estado, txtONull(fd, "notas"), txtONull(fd, "cobertura"), cobro, actualizacion]
   );
   const pid = p!.id as number;
   const paso = PERIODICIDAD[periodicidad].meses;
@@ -176,8 +189,14 @@ export async function crearPoliza(fd: FormData) {
     await q("INSERT INTO cuotas (poliza_id, numero, vencimiento, importe) VALUES ($1,$2,$3,$4)", [pid, i + 1, sumarMeses(primerVenc, i * paso), importe]);
   }
   if (fPoliza) await guardarDoc(fPoliza, { cliente_id: cid, poliza_id: pid, tipo: "poliza", subido_por: yo.id });
-  if (fCert) await guardarDoc(fCert, { cliente_id: cid, poliza_id: pid, tipo: "certificado", subido_por: yo.id });
-  ir(`/admin/polizas/${pid}`, "ok", `Póliza creada con ${cuotasCant} cuota${cuotasCant > 1 ? "s" : ""}.`);
+  const docCert = fCert ? await guardarDoc(fCert, { cliente_id: cid, poliza_id: pid, tipo: "certificado", subido_por: yo.id }) : null;
+  // Con actualización periódica se abre el primer período de certificado (el archivo, si se subió, queda asociado).
+  if (actualizacion > 0) {
+    const ini = desde || hoy();
+    await q("INSERT INTO certificados (poliza_id, desde, hasta, documento_id) VALUES ($1,$2,$3,$4)", [pid, ini, sumarMeses(ini, actualizacion), docCert]);
+  }
+  const resumen = conCuotas ? `${cuotasCant} cuota${cuotasCant > 1 ? "s" : ""}` : "cobro por tarjeta (sin cuotas)";
+  ir(`/admin/polizas/${pid}`, "ok", `Póliza creada con ${resumen}${actualizacion > 0 ? " y su primer certificado" : ""}.`);
 }
 
 export async function actualizarPoliza(fd: FormData) {
@@ -190,15 +209,17 @@ export async function actualizarPoliza(fd: FormData) {
   const estado = txt(fd, "estado");
   const desde = txt(fd, "vigencia_desde");
   const hasta = txt(fd, "vigencia_hasta");
+  const cobro = txt(fd, "cobro") || "oficina";
+  const actualizacion = Number(txt(fd, "actualizacion_meses") || 0);
   if (!ramo || !compania || !numero) ir(volver, "error", "Ramo, compañía y número son obligatorios.");
-  if (!ESTADOS_POLIZA[estado]) ir(volver, "error", "Estado inválido.");
+  if (!ESTADOS_POLIZA[estado] || !COBROS[cobro] || !ACTUALIZACION[String(actualizacion)]) ir(volver, "error", "Estado, cobro o actualización inválidos.");
   if ((desde && !esFecha(desde)) || (hasta && !esFecha(hasta))) ir(volver, "error", "Fechas de vigencia inválidas.");
   const suma = num(fd, "suma_asegurada");
   await q(
     `UPDATE polizas SET ramo=$2, compania=$3, numero=$4, riesgo=$5, dominio=$6, suma_asegurada=$7,
-       vigencia_desde=$8, vigencia_hasta=$9, estado=$10, notas=$11, cobertura=$12 WHERE id=$1`,
+       vigencia_desde=$8, vigencia_hasta=$9, estado=$10, notas=$11, cobertura=$12, cobro=$13, actualizacion_meses=$14 WHERE id=$1`,
     [id, ramo, compania, numero, txtONull(fd, "riesgo"), txtONull(fd, "dominio")?.toUpperCase() ?? null,
-     Number.isFinite(suma) ? suma : null, desde || null, hasta || null, estado, txtONull(fd, "notas"), txtONull(fd, "cobertura")]
+     Number.isFinite(suma) ? suma : null, desde || null, hasta || null, estado, txtONull(fd, "notas"), txtONull(fd, "cobertura"), cobro, actualizacion]
   );
   ir(volver, "ok", "Póliza actualizada.");
 }
@@ -243,6 +264,52 @@ export async function anularCuota(fd: FormData) {
   ir(volver, "ok", "Cuota anulada.");
 }
 
+// ───────── Certificados por período (pólizas con actualización periódica, ej. cuatrimestral) ─────────
+const mesesEntre = (a: string, b: string) => (Number(b.slice(0, 4)) - Number(a.slice(0, 4))) * 12 + Number(b.slice(5, 7)) - Number(a.slice(5, 7));
+
+/** Carga el certificado de un nuevo período y, si se pide, genera las cuotas (mes a mes) de ese período con el importe actualizado. */
+export async function cargarCertificado(fd: FormData) {
+  const yo = await requireAdmin();
+  const pid = Number(txt(fd, "poliza_id"));
+  const volver = `/admin/polizas/${pid}`;
+  const desde = txt(fd, "desde");
+  const hasta = txt(fd, "hasta");
+  const p = await q1("SELECT cliente_id, cobro, periodicidad FROM polizas WHERE id = $1", [pid]);
+  if (!p) ir("/admin/polizas", "error", "Póliza inexistente.");
+  if (!esFecha(desde) || !esFecha(hasta) || hasta <= desde) ir(volver, "error", "Indicá el período del certificado: la fecha «hasta» tiene que ser posterior a «desde».");
+  const generar = fd.get("generar_cuotas") === "on" && p!.cobro === "oficina";
+  const importe = num(fd, "importe_cuota");
+  if (generar && !(importe >= 0)) ir(volver, "error", "Indicá el importe de la cuota para generar las cuotas del período.");
+  const a = await archivoSeguro(fd, "archivo", volver);
+  const docId = a ? await guardarDoc(a, { cliente_id: p!.cliente_id, poliza_id: pid, tipo: "certificado", subido_por: yo.id }) : null;
+  await q("INSERT INTO certificados (poliza_id, desde, hasta, documento_id, nota) VALUES ($1,$2,$3,$4,$5)", [pid, desde, hasta, docId, txtONull(fd, "nota")]);
+  await q("UPDATE alertas SET estado = 'resuelta', resuelta_en = now() WHERE tipo = 'certificado' AND poliza_id = $1 AND estado = 'pendiente'", [pid]);
+
+  let nuevas = 0;
+  if (generar) {
+    const paso = PERIODICIDAD[p!.periodicidad]?.meses ?? 1;
+    nuevas = Math.max(1, Math.floor(mesesEntre(desde, hasta) / paso));
+    const ult = await q1("SELECT numero, vencimiento::text AS venc FROM cuotas WHERE poliza_id = $1 ORDER BY numero DESC LIMIT 1", [pid]);
+    const primera = ult && ult.venc >= desde ? sumarMeses(ult.venc, paso) : desde;
+    for (let i = 0; i < nuevas; i++) {
+      await q("INSERT INTO cuotas (poliza_id, numero, vencimiento, importe) VALUES ($1,$2,$3,$4)", [pid, (ult?.numero ?? 0) + i + 1, sumarMeses(primera, i * paso), importe]);
+    }
+    await q("UPDATE polizas SET importe_cuota = $2, cuotas_cant = (SELECT COUNT(*) FROM cuotas WHERE poliza_id = $1) WHERE id = $1", [pid, importe]);
+  }
+  ir(volver, "ok", `Certificado cargado${nuevas ? ` y ${nuevas} cuota${nuevas > 1 ? "s" : ""} generada${nuevas > 1 ? "s" : ""}` : ""}.`);
+}
+
+export async function eliminarCertificado(fd: FormData) {
+  await requireAdmin();
+  const id = Number(txt(fd, "id"));
+  const pid = Number(txt(fd, "poliza_id"));
+  const c = await q1("SELECT documento_id FROM certificados WHERE id = $1 AND poliza_id = $2", [id, pid]);
+  if (!c) ir(`/admin/polizas/${pid}`, "error", "Certificado inexistente.");
+  await q("DELETE FROM certificados WHERE id = $1", [id]);
+  if (c!.documento_id) await q("DELETE FROM documentos WHERE id = $1", [c!.documento_id]);
+  ir(`/admin/polizas/${pid}`, "ok", "Certificado eliminado.");
+}
+
 // ───────── Documentos ─────────
 export async function subirDocumento(fd: FormData) {
   const yo = await requireAdmin();
@@ -265,38 +332,36 @@ export async function eliminarDocumento(fd: FormData) {
 }
 
 // ───────── Cobros ─────────
-const METODOS_PERMITIDOS = ["efectivo", "mercadopago"] as const;
+const METODOS_PERMITIDOS = ["efectivo", "transferencia"] as const;
 
 export async function registrarPago(fd: FormData) {
   const yo = await requireAdmin();
-  const volver = `/admin/pagos/nuevo?cliente=${txt(fd, "cliente_id")}`;
+  const cid = Number(txt(fd, "cliente_id"));
+  const volver = `/admin/pagos/nuevo?cliente=${cid}`;
   const metodo = txt(fd, "metodo");
-  const cuotaId = Number(txt(fd, "cuota_id")) || null;
-  if (!(METODOS_PERMITIDOS as readonly string[]).includes(metodo)) ir(volver, "error", "Solo se pueden registrar pagos en efectivo o por Mercado Pago.");
-  if (!cuotaId) ir(volver, "error", "Elegí la cuota que se está pagando.");
-  const c = await q1(
-    "SELECT c.estado, c.poliza_id, c.importe::float8 AS importe, p.cliente_id FROM cuotas c JOIN polizas p ON p.id = c.poliza_id WHERE c.id = $1",
-    [cuotaId]
-  );
-  if (!c) ir(volver, "error", "La cuota no existe.");
-  if (c!.estado !== "pendiente") ir(volver, "error", "Esa cuota ya está paga o anulada.");
+  const cuotaIds = fd.getAll("cuota_id").map((v) => Number(v)).filter((n) => n > 0);
+  if (!(METODOS_PERMITIDOS as readonly string[]).includes(metodo)) ir(volver, "error", "Solo se pueden registrar pagos en efectivo o por transferencia.");
+  if (!cuotaIds.length) ir(volver, "error", "Elegí al menos una cuota de las que se están pagando.");
   const comprobante = await archivoSeguro(fd, "comprobante", volver);
   const reciboPropio = await archivoSeguro(fd, "recibo_propio", volver);
-  // El importe es el de la cuota y la fecha es la de hoy: no se pueden modificar.
-  const pagoId = await registrarPagoCore({
-    clienteId: c!.cliente_id,
-    polizaId: c!.poliza_id,
-    cuotaId,
-    importe: c!.importe,
-    fecha: hoy(),
-    metodo,
-    referencia: txtONull(fd, "referencia"),
-    observaciones: txtONull(fd, "observaciones"),
-    userId: yo.id,
-    comprobante,
-    reciboPropio,
-  });
-  ir(`/admin/pagos/${pagoId}`, "ok", "Cobro registrado y recibo emitido.");
+  let pagoId: number;
+  try {
+    // El importe de cada cuota es el suyo y la fecha es la de hoy: no se pueden modificar. Un solo recibo por todas.
+    pagoId = await registrarPagosCuotas({
+      clienteId: cid,
+      cuotaIds,
+      fecha: hoy(),
+      metodo,
+      referencia: txtONull(fd, "referencia"),
+      observaciones: txtONull(fd, "observaciones"),
+      userId: yo.id,
+      comprobante,
+      reciboPropio,
+    });
+  } catch (e) {
+    ir(volver, "error", e instanceof Error ? e.message : "No se pudo registrar el cobro.");
+  }
+  ir(`/admin/pagos/${pagoId}`, "ok", cuotaIds.length > 1 ? `Cobro registrado: ${cuotaIds.length} cuotas con un solo recibo.` : "Cobro registrado y recibo emitido.");
 }
 
 export async function anularPago(fd: FormData) {
@@ -305,12 +370,16 @@ export async function anularPago(fd: FormData) {
   const volver = `/admin/pagos/${id}`;
   const motivo = txt(fd, "motivo");
   if (motivo.length < 3) ir(volver, "error", "Indicá el motivo de la anulación.");
-  const p = await q1("SELECT cuota_id, estado FROM pagos WHERE id = $1", [id]);
+  const p = await q1("SELECT recibo_nro, cliente_id, estado FROM pagos WHERE id = $1", [id]);
   if (!p) ir("/admin/pagos", "error", "Pago inexistente.");
   if (p!.estado === "anulado") ir(volver, "error", "El pago ya estaba anulado.");
-  await q("UPDATE pagos SET estado = 'anulado', anulado_motivo = $2 WHERE id = $1", [id, motivo]);
-  await recalcularCuota(p!.cuota_id);
-  ir(volver, "ok", "Pago anulado. La cuota volvió a quedar pendiente.");
+  // Si el recibo cubre varias cuotas, se anulan todas juntas.
+  const grupo = await q("SELECT id, cuota_id FROM pagos WHERE recibo_nro = $1 AND cliente_id = $2 AND estado = 'aplicado'", [p!.recibo_nro, p!.cliente_id]);
+  for (const g of grupo) {
+    await q("UPDATE pagos SET estado = 'anulado', anulado_motivo = $2 WHERE id = $1", [g.id, motivo]);
+    await recalcularCuota(g.cuota_id);
+  }
+  ir(volver, "ok", grupo.length > 1 ? "Recibo anulado. Las cuotas volvieron a quedar pendientes." : "Pago anulado. La cuota volvió a quedar pendiente.");
 }
 
 export async function subirArchivoPago(fd: FormData) {
@@ -345,4 +414,29 @@ export async function eliminarCliente(fd: FormData) {
   await q("DELETE FROM pagos WHERE cliente_id = $1", [id]);
   await q("DELETE FROM clientes WHERE id = $1", [id]);
   ir("/admin/clientes", "ok", "Cliente eliminado definitivamente.");
+}
+
+// ───────── Anular / reactivar pólizas ─────────
+/** Anula la póliza: queda inactiva (el cliente no puede usarla), pero se puede reactivar cuando haga falta. */
+export async function anularPoliza(fd: FormData) {
+  await requireAdmin();
+  const id = Number(txt(fd, "id"));
+  const volver = txt(fd, "volver") || `/admin/polizas/${id}`;
+  const p = await q1("SELECT estado FROM polizas WHERE id = $1", [id]);
+  if (!p) ir("/admin/polizas", "error", "Póliza inexistente.");
+  if (p!.estado === "anulada") ir(volver, "error", "La póliza ya estaba anulada.");
+  await q("UPDATE polizas SET estado = 'anulada' WHERE id = $1", [id]);
+  await q("UPDATE alertas SET estado = 'resuelta', resuelta_en = now() WHERE tipo = 'baja' AND poliza_id = $1 AND estado = 'pendiente'", [id]);
+  ir(volver, "ok", "Póliza anulada. Queda inactiva y se puede reactivar cuando quieras.");
+}
+
+export async function reactivarPoliza(fd: FormData) {
+  await requireAdmin();
+  const id = Number(txt(fd, "id"));
+  const volver = txt(fd, "volver") || `/admin/polizas/${id}`;
+  const p = await q1("SELECT estado FROM polizas WHERE id = $1", [id]);
+  if (!p) ir("/admin/polizas", "error", "Póliza inexistente.");
+  if (p!.estado !== "anulada") ir(volver, "error", "La póliza no está anulada.");
+  await q("UPDATE polizas SET estado = 'vigente' WHERE id = $1", [id]);
+  ir(volver, "ok", "Póliza reactivada: vuelve a estar vigente.");
 }

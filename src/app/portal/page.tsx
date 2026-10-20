@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PolizaBloqueada, botonPagar } from "@/components/panel/Bloqueo";
 import { Icono, type NombreIcono } from "@/components/panel/Iconos";
 import { Badge, Card, Flash, btnGhost } from "@/components/panel/ui";
-import { EMPRESA, waLink } from "@/config/empresa";
+import { EMPRESA, RECIBO_LEGAL, waLink } from "@/config/empresa";
 import { dato, type Row } from "@/lib/api";
 import { portalUsuario } from "@/lib/auth";
 import { ESTADOS_POLIZA, fecha, hoy, money } from "@/lib/format";
@@ -39,9 +39,9 @@ export default async function PortalInicio({ searchParams }: { searchParams: Pro
         <section className="mb-6 border-2 border-accent-500 bg-white p-5 sm:p-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">{deuda.n > 0 ? "Tenés cuotas vencidas" : "Lo que tenés por pagar"}</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">{cuotas.length > 1 ? "Tus próximas cuotas a pagar" : "Tu próxima cuota a pagar"}</p>
               <p className="mt-1 font-display text-4xl font-semibold text-brand-900">{money(total)}</p>
-              {deuda.n > 0 && <p className="mt-1 text-sm font-semibold text-red-700">{deuda.n} cuota{deuda.n > 1 ? "s" : ""} vencida{deuda.n > 1 ? "s" : ""} por {money(deuda.total)}</p>}
+              {deuda.n > 0 && <p className="mt-1 text-sm font-semibold text-red-700">Tenés {deuda.n} cuota{deuda.n > 1 ? "s" : ""} vencida{deuda.n > 1 ? "s" : ""} por {money(deuda.total)} en total</p>}
             </div>
             <Link href="/portal/pagar" className={botonPagar}>PAGAR</Link>
           </div>
@@ -49,13 +49,15 @@ export default async function PortalInicio({ searchParams }: { searchParams: Pro
             {cuotas.map((x) => (
               <li key={x.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
                 <span>
-                  <strong className="text-brand-900">{x.compania}</strong> · Póliza {x.poliza} · Cuota {x.numero}/{x.cuotas_cant}
-                  <span className="block text-xs text-ink-soft">Vence el {fecha(x.venc)}</span>
+                  <strong className="text-brand-900">{[x.riesgo, x.dominio].filter(Boolean).join(" · ") || x.compania}</strong>
+                  <span className="block text-xs text-ink-soft">{x.compania} · Póliza {x.poliza} · Cuota {x.numero}/{x.cuotas_cant} · vence el {fecha(x.venc)}</span>
+                  {x.pendientes > 1 && <span className="block text-xs text-ink-soft">Te quedan {x.pendientes - 1} cuota{x.pendientes - 1 > 1 ? "s" : ""} más después de esta.</span>}
                 </span>
                 <span className="flex items-center gap-3"><strong>{money(x.importe)}</strong>{x.venc < h ? <Badge tono="rojo">Vencida</Badge> : <Badge tono="ambar">A vencer</Badge>}</span>
               </li>
             ))}
           </ul>
+          <p className="mt-3 text-xs text-ink-soft">Si querés pagar más de una cuota juntas, tocá PAGAR: ahí elegís cuáles. Se hace un solo recibo.</p>
         </section>
       ) : polizas.length > 0 ? (
         <div className="mb-6 border-l-4 border-emerald-600 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">No tenés cuotas pendientes. ¡Estás al día!</div>
@@ -116,6 +118,8 @@ export default async function PortalInicio({ searchParams }: { searchParams: Pro
           </ul>
         )}
       </Card>
+
+      <p className="mt-8 border-t border-line pt-5 text-center text-xs font-semibold leading-relaxed text-ink">{RECIBO_LEGAL}</p>
     </>
   );
 }

@@ -9,7 +9,7 @@ import { dato } from "@/lib/api";
 import { requireAdmin } from "@/lib/auth";
 import { logout } from "@/lib/actions/auth";
 
-export const metadata: Metadata = { title: "Panel de administración | Bertona Seguros", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Panel de administración", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

@@ -5,7 +5,7 @@ import { Badge, Card, Dato, Flash, LinkBtn, PageHead, TextArea, btnGhost, inputC
 import { EMPRESA } from "@/config/empresa";
 import { actualizarSiniestro, agregarNotaSiniestro, eliminarDocumento, eliminarSiniestro, subirArchivoSiniestro } from "@/lib/actions/admin";
 import { dato, type Row } from "@/lib/api";
-import { ESTADOS_SINIESTRO, fecha, waCliente } from "@/lib/format";
+import { ESTADOS_SINIESTRO, TIPOS_DOC, fecha, waCliente } from "@/lib/format";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; error?: string }> };
 
@@ -71,7 +71,7 @@ export default async function DetalleSiniestro({ params, searchParams }: Props) 
             <ul className="mb-4 divide-y divide-line">
               {docs.map((d) => (
                 <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5 text-sm">
-                  <span><a href={`/api/documento/${d.id}`} target="_blank" className="font-semibold text-brand-800 hover:underline">{d.nombre}</a> <span className="text-xs text-ink-soft">({Math.ceil(d.tamano / 1024)} KB · {fecha(d.creado)})</span></span>
+                  <span><a href={`/api/documento/${d.id}`} target="_blank" className="font-semibold text-brand-800 hover:underline">{TIPOS_DOC[d.tipo] ? `${TIPOS_DOC[d.tipo]}: ` : ""}{d.nombre}</a> <span className="text-xs text-ink-soft">({Math.ceil(d.tamano / 1024)} KB · {fecha(d.creado)})</span></span>
                   <form action={eliminarDocumento}><input type="hidden" name="id" value={d.id} /><input type="hidden" name="volver" value={volver} /><SubmitButton variant="danger" small confirmar="¿Eliminar este archivo?">Eliminar</SubmitButton></form>
                 </li>
               ))}

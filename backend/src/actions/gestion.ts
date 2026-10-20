@@ -1,9 +1,11 @@
 /** Acciones del panel: pagos informados, avisos, siniestros y configuración. */
 import { requireAdmin } from "../auth";
 import { leerArchivo, type Archivo } from "../archivos";
-import { guardarDoc, registrarPagoCore, setConfig } from "../core";
+import { guardarDoc, registrarPagosCuotas, setConfig } from "../core";
 import { q, q1 } from "../db";
+import { constanciaDeParametros } from "../files";
 import { ir, num, txt, txtONull } from "../flash";
+import { generarConstanciaPdf } from "../pdf";
 import { ESTADOS_SINIESTRO, TIPOS_SINIESTRO, esFecha, hoy } from "../format";
 
 async function archivoSeguro(fd: FormData, campo: string, volver: string): Promise<Archivo | null> {
@@ -21,30 +23,34 @@ export async function aprobarAviso(fd: FormData) {
   const id = Number(txt(fd, "id"));
   const volver = "/admin/comprobantes";
   const a = await q1(
-    `SELECT a.id, a.cliente_id, a.metodo, a.documento_id, a.cuota_id,
-            (a.creado AT TIME ZONE 'America/Argentina/Buenos_Aires')::date::text AS fecha_aviso,
-            c.estado AS cuota_estado, c.importe::float8 AS importe, c.poliza_id
-     FROM avisos_pago a LEFT JOIN cuotas c ON c.id = a.cuota_id
-     WHERE a.id = $1 AND a.estado = 'pendiente'`,
+    `SELECT a.id, a.cliente_id, a.metodo, a.documento_id, (a.creado AT TIME ZONE 'America/Argentina/Buenos_Aires')::date::text AS fecha_aviso
+     FROM avisos_pago a WHERE a.id = $1 AND a.estado = 'pendiente'`,
     [id]
   );
   if (!a) ir(volver, "error", "Ese pago ya fue resuelto o no existe.");
-  if (!a!.cuota_id) ir(volver, "error", "El cliente no indicó la cuota: rechazá el aviso y pedile que lo informe de nuevo.");
-  if (a!.cuota_estado !== "pendiente") ir(volver, "error", "Esa cuota ya figura paga: rechazá el aviso con el motivo.");
-  const metodo = ["efectivo", "mercadopago"].includes(a!.metodo) ? a!.metodo : "mercadopago";
-  const pagoId = await registrarPagoCore({
-    clienteId: a!.cliente_id,
-    polizaId: a!.poliza_id,
-    cuotaId: a!.cuota_id,
-    importe: a!.importe,
-    fecha: metodo === "mercadopago" ? a!.fecha_aviso : hoy(),
-    metodo,
-    userId: yo.id,
-    documentoId: a!.documento_id,
-  });
+  const cuotas = await q(
+    `SELECT c.id, c.estado FROM aviso_cuotas ac JOIN cuotas c ON c.id = ac.cuota_id WHERE ac.aviso_id = $1 ORDER BY c.vencimiento`,
+    [id]
+  );
+  if (!cuotas.length) ir(volver, "error", "El cliente no indicó la cuota: rechazá el aviso y pedile que lo informe de nuevo.");
+  if (cuotas.some((c) => c.estado !== "pendiente")) ir(volver, "error", "Alguna de esas cuotas ya figura paga: rechazá el aviso con el motivo.");
+  const metodo = a!.metodo === "efectivo" ? "efectivo" : "transferencia"; // los avisos viejos de Mercado Pago pasan a transferencia
+  let pagoId: number;
+  try {
+    pagoId = await registrarPagosCuotas({
+      clienteId: a!.cliente_id,
+      cuotaIds: cuotas.map((c) => c.id as number),
+      fecha: metodo === "transferencia" ? a!.fecha_aviso : hoy(),
+      metodo,
+      userId: yo.id,
+      documentoId: a!.documento_id,
+    });
+  } catch (e) {
+    ir(volver, "error", e instanceof Error ? e.message : "No se pudo registrar el cobro.");
+  }
   await q("UPDATE avisos_pago SET estado = 'confirmado', pago_id = $2 WHERE id = $1", [id, pagoId]);
   await q("UPDATE alertas SET estado = 'resuelta', resuelta_en = now() WHERE tipo = 'pago_informado' AND datos = $1", [String(id)]);
-  ir(volver, "ok", "Pago aprobado: se registró el cobro y se emitió el recibo.");
+  ir(volver, "ok", cuotas.length > 1 ? `Pago aprobado: ${cuotas.length} cuotas con un solo recibo.` : "Pago aprobado: se registró el cobro y se emitió el recibo.");
 }
 
 // ───────── Avisos ─────────
@@ -90,7 +96,10 @@ export async function guardarConfig(fd: FormData) {
   const dias = Math.round(num(fd, "dias_gracia"));
   if (!(dias >= 0 && dias <= 365)) ir("/admin/configuracion", "error", "Los días de gracia deben estar entre 0 y 365.");
   await setConfig("dias_gracia", String(dias));
-  for (const k of ["auxilio_telefono", "auxilio_whatsapp", "auxilio_texto", "auxilio_planes", "mp_instrucciones"]) await setConfig(k, txt(fd, k));
+  const avisoCert = Math.round(num(fd, "dias_aviso_certificado"));
+  if (!(avisoCert >= 0 && avisoCert <= 120)) ir("/admin/configuracion", "error", "Los días de aviso del certificado deben estar entre 0 y 120.");
+  await setConfig("dias_aviso_certificado", String(avisoCert));
+  for (const k of ["auxilio_telefono", "auxilio_texto", "auxilio_planes", "mp_instrucciones"]) await setConfig(k, txt(fd, k));
   ir("/admin/configuracion", "ok", "Configuración guardada.");
 }
 
@@ -170,4 +179,24 @@ export async function eliminarSiniestro(fd: FormData) {
   await q("DELETE FROM documentos WHERE siniestro_id = $1", [id]);
   await q("DELETE FROM siniestros WHERE id = $1", [id]);
   ir("/admin/siniestros", "ok", "Siniestro eliminado.");
+}
+
+// ───────── Constancia de cobertura ─────────
+/** Genera la constancia con los datos (editables) del formulario y la guarda en los papeles de la póliza. */
+export async function guardarConstancia(fd: FormData) {
+  const yo = await requireAdmin();
+  const pid = Number(txt(fd, "poliza_id"));
+  const volver = `/admin/polizas/${pid}/constancia`;
+  const p = await q1("SELECT cliente_id FROM polizas WHERE id = $1", [pid]);
+  if (!p) ir("/admin/polizas", "error", "Póliza inexistente.");
+  const d = constanciaDeParametros((k) => String(fd.get(k) ?? ""));
+  if (!d.asegurado || !d.poliza) ir(volver, "error", "Completá el nombre del asegurado y el número de póliza.");
+  if (txt(fd, "desde") && !esFecha(txt(fd, "desde"))) ir(volver, "error", "La fecha de vigencia desde no es válida.");
+  if (txt(fd, "hasta") && !esFecha(txt(fd, "hasta"))) ir(volver, "error", "La fecha de vigencia hasta no es válida.");
+  const pdf = await generarConstanciaPdf(d);
+  await guardarDoc(
+    { nombre: `Constancia de cobertura ${d.poliza}.pdf`, mime: "application/pdf", datos: Buffer.from(pdf) },
+    { cliente_id: p!.cliente_id, poliza_id: pid, tipo: "certificado", subido_por: yo.id }
+  );
+  ir(`/admin/polizas/${pid}`, "ok", "Constancia guardada en los papeles de la póliza: el cliente ya puede descargarla.");
 }

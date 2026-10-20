@@ -11,6 +11,7 @@ export function SubmitButton({
   small,
   confirmar,
   pendiente = "Guardando…",
+  disabled,
 }: {
   children: React.ReactNode;
   variant?: "primary" | "gold" | "ghost" | "danger";
@@ -18,13 +19,14 @@ export function SubmitButton({
   /** Pide confirmación antes de enviar el formulario. */
   confirmar?: string;
   pendiente?: string;
+  disabled?: boolean;
 }) {
   const { pending } = useFormStatus();
   const c = { primary: btnPrimary, gold: btnGold, ghost: btnGhost, danger: btnDanger }[variant];
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || disabled}
       onClick={(e) => {
         if (confirmar && !window.confirm(confirmar)) e.preventDefault();
       }}
@@ -87,22 +89,32 @@ export function MenuMovil({ items }: { items: ItemNav[] }) {
   );
 }
 
-/** Formulario de cobro: solo efectivo o Mercado Pago; el importe es el de la cuota y la fecha es hoy (no se editan). */
+/** Formulario de cobro: solo efectivo o transferencia; el importe es el de la cuota y la fecha es hoy (no se editan). */
 export function CobroForm({
   cuotas,
   hoy,
   cuotaInicial,
+  cuotasIniciales = [],
   clienteId,
   action,
 }: {
   cuotas: { id: number; poliza: string; compania: string; dominio: string; numero: number; total: number; vencimiento: string; importe: number; vencida: boolean }[];
   hoy: string;
   cuotaInicial?: number;
+  cuotasIniciales?: number[];
   clienteId: number;
   action: (fd: FormData) => void | Promise<void>;
 }) {
-  const [cuota, setCuota] = useState<string>(cuotaInicial ? String(cuotaInicial) : "");
-  const sel = cuotas.find((c) => String(c.id) === cuota);
+  const [elegidas, setElegidas] = useState<Set<number>>(() => new Set(cuotasIniciales.length ? cuotasIniciales : cuotaInicial ? [cuotaInicial] : []));
+  const seleccion = cuotas.filter((c) => elegidas.has(c.id));
+  const totalElegido = seleccion.reduce((s, c) => s + c.importe, 0);
+  const alternar = (id: number) =>
+    setElegidas((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
   const ars = (n: number) => n.toLocaleString("es-AR", { style: "currency", currency: "ARS" });
   const campo = "mt-1.5 w-full border border-line bg-white px-3 py-2.5 text-sm text-ink hover:border-brand-200 focus:border-brand-500";
   const fijo = "mt-1.5 w-full border border-line bg-soft px-3 py-2.5 text-sm font-semibold text-brand-900";
@@ -111,11 +123,17 @@ export function CobroForm({
     <form action={action} className="space-y-6">
       <input type="hidden" name="cliente_id" value={clienteId} />
       <fieldset>
-        <legend className="mb-2 text-sm font-semibold text-brand-900">¿Qué cuota se paga? <span className="text-red-600">*</span></legend>
+        <legend className="mb-1 text-sm font-semibold text-brand-900">¿Qué cuotas se pagan? <span className="text-red-600">*</span></legend>
+        <p className="mb-3 text-xs text-ink-soft">Se puede cobrar más de una cuota a la vez: se emite un solo recibo por todas.</p>
+        <div className="mb-3 flex flex-wrap gap-2 text-xs font-semibold">
+          {cuotas.some((c) => c.vencida) && <button type="button" onClick={() => setElegidas(new Set(cuotas.filter((c) => c.vencida).map((c) => c.id)))} className="border border-line bg-white px-3 py-2 text-brand-800 hover:border-brand-500">Elegir las vencidas</button>}
+          {cuotas.length > 1 && <button type="button" onClick={() => setElegidas(new Set(cuotas.map((c) => c.id)))} className="border border-line bg-white px-3 py-2 text-brand-800 hover:border-brand-500">Elegir todas</button>}
+          {elegidas.size > 0 && <button type="button" onClick={() => setElegidas(new Set())} className="border border-line bg-white px-3 py-2 text-ink-soft hover:border-brand-500">Quitar selección</button>}
+        </div>
         <div className="space-y-2">
           {cuotas.map((c) => (
-            <label key={c.id} className={`flex cursor-pointer items-center gap-3 border p-3 text-sm ${cuota === String(c.id) ? "border-brand-500 bg-brand-50" : "border-line bg-white hover:border-brand-200"}`}>
-              <input type="radio" name="cuota_id" value={c.id} required checked={cuota === String(c.id)} onChange={() => setCuota(String(c.id))} className="h-4 w-4 accent-[var(--brand-700)]" />
+            <label key={c.id} className={`flex cursor-pointer items-center gap-3 border p-3 text-sm ${elegidas.has(c.id) ? "border-brand-500 bg-brand-50" : "border-line bg-white hover:border-brand-200"}`}>
+              <input type="checkbox" name="cuota_id" value={c.id} checked={elegidas.has(c.id)} onChange={() => alternar(c.id)} className="h-4 w-4 accent-[var(--brand-700)]" />
               <span className="flex-1">
                 <strong className="text-brand-900">Póliza {c.poliza}</strong> · {c.compania}
                 {c.dominio ? ` · ${c.dominio}` : ""} · Cuota {c.numero}/{c.total}
@@ -132,9 +150,9 @@ export function CobroForm({
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className={lab}>
-          Importe a cobrar
-          <div className={fijo}>{sel ? ars(sel.importe) : "Elegí una cuota"}</div>
-          <span className="mt-1 block text-xs font-normal text-ink-soft">Es el importe de la cuota: no se modifica.</span>
+          Importe a cobrar{seleccion.length > 1 ? ` (${seleccion.length} cuotas)` : ""}
+          <div className={fijo}>{seleccion.length ? ars(totalElegido) : "Elegí una cuota"}</div>
+          <span className="mt-1 block text-xs font-normal text-ink-soft">Es la suma de las cuotas elegidas: no se modifica.</span>
         </div>
         <div className={lab}>
           Fecha de pago
@@ -145,11 +163,11 @@ export function CobroForm({
           Forma de pago <span className="text-red-600">*</span>
           <select name="metodo" required defaultValue="efectivo" className={campo}>
             <option value="efectivo">Efectivo</option>
-            <option value="mercadopago">Mercado Pago</option>
+            <option value="transferencia">Transferencia</option>
           </select>
         </label>
         <label className={`${lab} sm:col-span-3`}>
-          Referencia (N° de operación de Mercado Pago, etc.)
+          Referencia (N° de operación de la transferencia, etc.)
           <input name="referencia" className={campo} />
         </label>
         <label className={`${lab} sm:col-span-3`}>

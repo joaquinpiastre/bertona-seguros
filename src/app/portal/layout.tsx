@@ -10,7 +10,7 @@ import { EMPRESA, waLink } from "@/config/empresa";
 import { logout } from "@/lib/actions/auth";
 import { requireSocio } from "@/lib/auth";
 
-export const metadata: Metadata = { title: "Mi cuenta | Bertona Seguros", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Mi cuenta", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {

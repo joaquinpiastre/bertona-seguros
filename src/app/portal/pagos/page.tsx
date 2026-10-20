@@ -34,7 +34,7 @@ export default async function MisPagos({ searchParams }: { searchParams: Promise
         {cuotas.length > 0 && (
           <div className="mt-6">
             <Link href="/portal/pagar" className={botonPagar}>PAGAR</Link>
-            <p className="mt-3 text-sm text-ink-soft">Podés pagar en efectivo en la oficina (San Lorenzo 600, San Rafael) o por Mercado Pago. Los pagos pueden demorar hasta 48 hs en acreditarse.</p>
+            <p className="mt-3 text-sm text-ink-soft">Podés pagar una o varias cuotas juntas, en efectivo en la oficina (San Lorenzo 600, San Rafael) o por transferencia. Los pagos pueden demorar hasta 48 hs en acreditarse. Consultas de cobranza: 260 400-6753.</p>
           </div>
         )}
       </Card>
@@ -47,7 +47,9 @@ export default async function MisPagos({ searchParams }: { searchParams: Promise
                 <span>
                   <strong>{money(a.importe)}</strong> · {METODOS[a.metodo] ?? a.metodo} · {fecha(a.creado)}
                   <span className="block text-xs text-ink-soft">
-                    {a.poliza ? `${a.compania} · Póliza ${a.poliza}${a.cuota_n ? ` · Cuota ${a.cuota_n}/${a.cuotas_cant}` : ""}` : "Sin cuota indicada"}
+                    {Array.isArray(a.lineas) && a.lineas.length
+                      ? a.lineas.map((l: Row) => `${l.compania} · Póliza ${l.poliza} · Cuota ${l.cuota}/${l.total}`).join(" — ")
+                      : "Sin cuota indicada"}
                     {a.documento_id && <> · <a className="underline" href={`/api/documento/${a.documento_id}`} target="_blank">ver comprobante</a></>}
                   </span>
                   {a.estado === "rechazado" && a.motivo && <span className="block text-xs text-red-700">Motivo: {a.motivo}</span>}
@@ -70,7 +72,14 @@ export default async function MisPagos({ searchParams }: { searchParams: Promise
                 <tr key={p.id}>
                   <Td className="font-semibold">N° {String(p.recibo_nro).padStart(6, "0")}</Td>
                   <Td>{fecha(p.fecha)}</Td>
-                  <Td>{p.poliza ? <>{p.compania}<span className="block text-xs text-ink-soft">Póliza {p.poliza}{p.cuota_n ? ` · Cuota ${p.cuota_n}/${p.cuotas_cant}` : ""}</span></> : "Pago a cuenta"}</Td>
+                  <Td>
+                    {Array.isArray(p.lineas) && p.lineas.length ? (
+                      <>
+                        {p.cuotas_n > 1 && <strong className="block text-xs text-brand-900">{p.cuotas_n} cuotas en un solo recibo</strong>}
+                        {p.lineas.map((l: Row, i: number) => <span key={i} className="block text-xs text-ink-soft">{l.compania} · Póliza {l.poliza}{l.cuota ? ` · Cuota ${l.cuota}/${l.total}` : ""}</span>)}
+                      </>
+                    ) : "Pago a cuenta"}
+                  </Td>
                   <Td>{METODOS[p.metodo] ?? p.metodo}</Td>
                   <Td right className="font-semibold">{money(p.importe)}</Td>
                   <Td right>

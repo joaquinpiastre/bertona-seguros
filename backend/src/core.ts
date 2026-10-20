@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
 import type { Archivo } from "./archivos";
 import { q, q1 } from "./db";
-import { hoy } from "./format";
+import { hoy, sumarDias } from "./format";
 
 export const soloDigitos = (v: unknown) => String(v ?? "").replace(/\D/g, "");
 
@@ -28,6 +28,12 @@ export async function getConfigs(claves: string[]): Promise<Record<string, strin
   return out;
 }
 
+/** Con cuántos días de anticipación se avisa que un certificado está por vencer. */
+export async function diasAvisoCertificado(): Promise<number> {
+  const n = Number(await getConfig("dias_aviso_certificado", "15"));
+  return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : 15;
+}
+
 export async function diasGracia(): Promise<number> {
   const n = Number(await getConfig("dias_gracia", "30"));
   return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : 30;
@@ -37,12 +43,13 @@ export async function diasGracia(): Promise<number> {
 export async function guardarDoc(
   a: Archivo,
   d: { cliente_id: number; poliza_id?: number | null; pago_id?: number | null; siniestro_id?: number | null; tipo: string; subido_por: number | null }
-) {
-  await q(
+): Promise<number> {
+  const r = await q1(
     `INSERT INTO documentos (cliente_id, poliza_id, pago_id, siniestro_id, tipo, nombre, mime, tamano, datos, subido_por)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
     [d.cliente_id, d.poliza_id ?? null, d.pago_id ?? null, d.siniestro_id ?? null, d.tipo, a.nombre, a.mime, a.datos.length, a.datos, d.subido_por]
   );
+  return r!.id as number;
 }
 
 export async function recalcularCuota(id: number | null) {
@@ -58,7 +65,7 @@ export async function recalcularCuota(id: number | null) {
 }
 
 // ───────── Alertas para la empresa ─────────
-export type TipoAlerta = "baja" | "tramite" | "siniestro" | "pago_informado" | "pago_final" | "poliza_vencida";
+export type TipoAlerta = "baja" | "tramite" | "siniestro" | "pago_informado" | "pago_final" | "poliza_vencida" | "certificado";
 
 export async function crearAlerta(a: {
   tipo: TipoAlerta;
@@ -103,7 +110,7 @@ export async function verificarPolizaPagada(polizaId: number | null) {
   });
 }
 
-/** Crea el aviso de pólizas cuya vigencia ya terminó (una sola vez por vencimiento). */
+/** Crea los avisos de pólizas con la vigencia terminada (una sola vez por vencimiento) y de certificados por vencer. */
 export async function generarAlertasVencidas() {
   const h = hoy();
   const filas = await q(
@@ -123,6 +130,38 @@ export async function generarAlertasVencidas() {
       datos: p.hasta,
       unico: true,
     });
+  }
+  await generarAlertasCertificados();
+}
+
+/**
+ * Avisa de los certificados de pólizas con actualización periódica que vencen pronto, ya vencieron o nunca se cargaron.
+ * Un aviso por póliza y período; al vencer reemplaza al de "por vencer".
+ */
+export async function generarAlertasCertificados() {
+  const h = hoy();
+  const limite = sumarDias(h, await diasAvisoCertificado());
+  const filas = await q(
+    `SELECT * FROM (
+       SELECT p.id, p.cliente_id, p.numero, p.compania, cl.nombre,
+              (SELECT MAX(hasta) FROM certificados WHERE poliza_id = p.id)::text AS hasta
+       FROM polizas p JOIN clientes cl ON cl.id = p.cliente_id
+       WHERE p.actualizacion_meses > 0 AND p.estado IN ('vigente','en_tramite') AND cl.activo
+     ) x WHERE x.hasta IS NULL OR x.hasta::date <= $1::date
+     ORDER BY x.hasta NULLS FIRST LIMIT 200`,
+    [limite]
+  );
+  for (const p of filas) {
+    const dmy = p.hasta ? String(p.hasta).split("-").reverse().join("/") : "";
+    const base = `${p.nombre} · ${p.compania} · póliza ${p.numero}.`;
+    if (!p.hasta) {
+      await crearAlerta({ tipo: "certificado", cliente_id: p.cliente_id, poliza_id: p.id, titulo: "Falta cargar el certificado", detalle: `${base} Todavía no tiene ningún certificado cargado.`, datos: "sin", unico: true });
+    } else if (p.hasta <= h) {
+      await q("UPDATE alertas SET estado = 'resuelta', resuelta_en = now() WHERE tipo = 'certificado' AND poliza_id = $1 AND datos = $2 AND estado = 'pendiente'", [p.id, p.hasta]);
+      await crearAlerta({ tipo: "certificado", cliente_id: p.cliente_id, poliza_id: p.id, titulo: "Certificado vencido", detalle: `${base} El certificado venció el ${dmy}. Hay que renovarlo.`, datos: `${p.hasta}:vencido`, unico: true });
+    } else {
+      await crearAlerta({ tipo: "certificado", cliente_id: p.cliente_id, poliza_id: p.id, titulo: "Certificado por vencer", detalle: `${base} El certificado vence el ${dmy}.`, datos: p.hasta, unico: true });
+    }
   }
 }
 
@@ -198,8 +237,58 @@ export async function registrarPagoCore(a: {
   return pagoId;
 }
 
-// ───────── Usuarios socios (ingreso con DNI) ─────────
-/** Crea o actualiza el usuario del cliente a partir de su documento: el DNI es su usuario de ingreso. */
+/**
+ * Cobra varias cuotas juntas con UN solo recibo: cada cuota queda como una fila de pagos con el mismo N° de recibo.
+ * El importe de cada fila es el de su cuota y la fecha la fija quien llama. Devuelve el id del primer pago (cabecera del recibo).
+ */
+export async function registrarPagosCuotas(a: {
+  clienteId: number;
+  cuotaIds: number[];
+  fecha: string;
+  metodo: string;
+  referencia?: string | null;
+  observaciones?: string | null;
+  userId: number | null;
+  comprobante?: Archivo | null;
+  reciboPropio?: Archivo | null;
+  documentoId?: number | null;
+}): Promise<number> {
+  const ids = [...new Set(a.cuotaIds.map((n) => Math.trunc(Number(n))).filter((n) => n > 0))];
+  const cuotas = await q(
+    `SELECT c.id, c.poliza_id, c.importe::float8 AS importe FROM cuotas c JOIN polizas p ON p.id = c.poliza_id
+     WHERE c.id IN (${enLista(ids)}) AND p.cliente_id = $1 AND c.estado = 'pendiente' ORDER BY p.id, c.numero`,
+    [a.clienteId]
+  );
+  if (!cuotas.length || cuotas.length !== ids.length) throw new Error("Alguna de las cuotas no existe o ya está paga.");
+  const nro = (await q1("SELECT nextval('recibo_seq')::int AS n"))!.n as number;
+  let primero = 0;
+  for (const c of cuotas) {
+    const r = await q1(
+      `INSERT INTO pagos (recibo_nro, cliente_id, poliza_id, cuota_id, fecha, importe, metodo, referencia, observaciones, registrado_por)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+      [nro, a.clienteId, c.poliza_id, c.id, a.fecha, c.importe, a.metodo, a.referencia ?? null, a.observaciones ?? null, a.userId]
+    );
+    if (!primero) primero = r!.id as number;
+    await recalcularCuota(c.id);
+  }
+  const polizaCab = cuotas[0].poliza_id as number;
+  if (a.documentoId) await q("UPDATE documentos SET pago_id = $2, poliza_id = COALESCE(poliza_id, $3) WHERE id = $1", [a.documentoId, primero, polizaCab]);
+  if (a.comprobante) await guardarDoc(a.comprobante, { cliente_id: a.clienteId, poliza_id: polizaCab, pago_id: primero, tipo: "comprobante", subido_por: a.userId });
+  if (a.reciboPropio) await guardarDoc(a.reciboPropio, { cliente_id: a.clienteId, poliza_id: polizaCab, pago_id: primero, tipo: "recibo", subido_por: a.userId });
+  for (const pid of new Set(cuotas.map((c) => c.poliza_id as number))) await verificarPolizaPagada(pid);
+  return primero;
+}
+
+/** Contraseña numérica de 6 dígitos para entregar al cliente. */
+export const claveNueva = () => String(100000 + (randomBytes(4).readUInt32BE(0) % 900000));
+
+/** Guarda la contraseña de ingreso del cliente (la define o cambia la oficina, o el propio cliente). */
+export async function fijarClave(usuarioId: number, clave: string) {
+  await q("UPDATE usuarios SET password_hash = $2, tiene_clave = TRUE, pin_hash = NULL WHERE id = $1", [usuarioId, await bcrypt.hash(clave, 10)]);
+}
+
+// ───────── Usuarios socios (ingreso con DNI y contraseña) ─────────
+/** Crea o actualiza el usuario del cliente a partir de su documento: el DNI es su usuario de ingreso (la contraseña la fija la oficina). */
 export async function sincronizarUsuarioSocio(clienteId: number): Promise<{ ok: boolean; motivo?: string }> {
   const c = await q1("SELECT id, nombre, documento, activo FROM clientes WHERE id = $1", [clienteId]);
   if (!c) return { ok: false, motivo: "Cliente inexistente." };

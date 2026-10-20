@@ -28,10 +28,17 @@ export default async function PagosInformados({ searchParams }: { searchParams: 
                     <Link href={`/admin/clientes/${a.cliente_id}`} className="font-semibold text-brand-800 hover:underline">{a.cliente}</Link>
                     <span className="text-ink-soft"> · informado el {fecha(a.creado)}</span>
                     <span className="block text-ink-soft">
-                      {a.poliza ? `${a.compania} · Póliza ${a.poliza}${a.dominio ? ` · ${a.dominio}` : ""}${a.cuota_n ? ` · Cuota ${a.cuota_n}/${a.cuotas_cant}` : ""}` : "Sin cuota indicada"}
+                      {Array.isArray(a.lineas) && a.lineas.length ? (
+                        <>
+                          {a.lineas.length > 1 && <strong className="text-brand-900">{a.lineas.length} cuotas juntas:</strong>}
+                          {a.lineas.map((l: Row, i: number) => (
+                            <span key={i} className="block">{l.compania} · Póliza {l.poliza}{l.dominio ? ` · ${l.dominio}` : ""} · Cuota {l.cuota}/{l.total} · vence {fecha(l.venc)} · {money(l.importe)}</span>
+                          ))}
+                        </>
+                      ) : "Sin cuota indicada"}
                     </span>
                     <span className="block">
-                      <strong>{money(a.cuota_importe ?? a.importe)}</strong> · {METODOS[a.metodo] ?? a.metodo} · {a.metodo === "efectivo" ? "pagará en la oficina" : `pagado el ${fecha(a.creado)}`}
+                      <strong>Total {money(a.importe)}</strong> · {METODOS[a.metodo] ?? a.metodo} · {a.metodo === "efectivo" ? "pagará en la oficina" : `pagado el ${fecha(a.creado)}`}
                     </span>
                     {a.nota && <span className="block text-xs text-ink-soft">Nota del cliente: {a.nota}</span>}
                     {a.documento_id ? (
@@ -67,7 +74,7 @@ export default async function PagosInformados({ searchParams }: { searchParams: 
               <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
                 <span>
                   <Link href={`/admin/clientes/${a.cliente_id}`} className="font-semibold text-brand-800 hover:underline">{a.cliente}</Link>
-                  <span className="text-ink-soft"> · {money(a.cuota_importe ?? a.importe)} · {METODOS[a.metodo] ?? a.metodo} · {fecha(a.creado)}</span>
+                  <span className="text-ink-soft"> · {money(a.importe)}{Array.isArray(a.lineas) && a.lineas.length > 1 ? ` (${a.lineas.length} cuotas)` : ""} · {METODOS[a.metodo] ?? a.metodo} · {fecha(a.creado)}</span>
                   {a.estado === "rechazado" && a.motivo && <span className="block text-xs text-red-700">Motivo: {a.motivo}</span>}
                 </span>
                 <span className="flex items-center gap-3">

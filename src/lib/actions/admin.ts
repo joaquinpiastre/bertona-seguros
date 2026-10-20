@@ -14,8 +14,20 @@ export async function alternarCliente(fd: FormData) {
   await accion("alternarCliente", fd);
 }
 
-export async function quitarPinCliente(fd: FormData) {
-  await accion("quitarPinCliente", fd);
+export async function definirClaveCliente(fd: FormData) {
+  await accion("definirClaveCliente", fd);
+}
+
+export async function anularPoliza(fd: FormData) {
+  await accion("anularPoliza", fd);
+}
+
+export async function reactivarPoliza(fd: FormData) {
+  await accion("reactivarPoliza", fd);
+}
+
+export async function guardarConstancia(fd: FormData) {
+  await accion("guardarConstancia", fd);
 }
 
 export async function restablecerPassword(fd: FormData) {
@@ -126,3 +138,10 @@ export async function eliminarSiniestro(fd: FormData) {
   await accion("eliminarSiniestro", fd);
 }
 
+export async function cargarCertificado(fd: FormData) {
+  await accion("cargarCertificado", fd);
+}
+
+export async function eliminarCertificado(fd: FormData) {
+  await accion("eliminarCertificado", fd);
+}

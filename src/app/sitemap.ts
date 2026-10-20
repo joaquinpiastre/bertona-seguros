@@ -1,12 +1,14 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "@/config/empresa";
+import { RAMOS, SITE_URL } from "@/config/empresa";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = SITE_URL.replace(/\/$/, "");
-  const detalles = ["autos", "motos", "hogar", "comercio", "accidentes"];
   return [
     { url: base, lastModified: new Date(), changeFrequency: "monthly", priority: 1 },
+    { url: `${base}/seguros`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },
+    { url: `${base}/nosotros`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.6 },
+    { url: `${base}/contacto`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.6 },
     { url: `${base}/ayuda`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-    ...detalles.map((d) => ({ url: `${base}/seguros/${d}`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.7 })),
+    ...RAMOS.map((r) => ({ url: `${base}/seguros/${r.id}`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.7 })),
   ];
 }

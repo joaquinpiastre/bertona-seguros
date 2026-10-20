@@ -13,6 +13,7 @@ const TIPOS: Record<string, { label: string; tono: "rojo" | "ambar" | "azul" | "
   pago_informado: { label: "Pago informado", tono: "ambar" },
   pago_final: { label: "Póliza pagada", tono: "verde" },
   poliza_vencida: { label: "Póliza vencida", tono: "rojo" },
+  certificado: { label: "Certificado", tono: "ambar" },
 };
 
 const nombre1 = (n: string) => n.split(" ")[0].charAt(0) + n.split(" ")[0].slice(1).toLowerCase();
@@ -38,7 +39,7 @@ function whatsapp(a: Row): string {
 
 function Aviso({ a, resuelta }: { a: Row; resuelta?: boolean }) {
   const t = TIPOS[a.tipo] ?? { label: a.tipo, tono: "gris" as const };
-  const wa = waCliente(a.telefono, whatsapp(a));
+  const wa = a.tipo === "certificado" ? "" : waCliente(a.telefono, whatsapp(a)); // el certificado se gestiona con la compañía, no con el cliente
   return (
     <li className="py-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -51,7 +52,7 @@ function Aviso({ a, resuelta }: { a: Row; resuelta?: boolean }) {
           <p className="mt-1 font-semibold text-brand-900">{a.titulo}</p>
           {a.detalle && <p className="mt-1 whitespace-pre-line text-ink-soft">{a.detalle}</p>}
           {a.poliza_id && (
-            <Link href={`/admin/polizas/${a.poliza_id}`} className="mt-1 inline-block text-xs font-semibold text-brand-700 underline">Ver póliza {a.poliza}</Link>
+            <Link href={`/admin/polizas/${a.poliza_id}`} className="mt-1 inline-block text-xs font-semibold text-brand-700 underline">{a.tipo === "certificado" && !resuelta ? `Cargar el certificado en la póliza ${a.poliza}` : `Ver póliza ${a.poliza}`}</Link>
           )}
           {a.tipo === "siniestro" && a.datos && <> · <Link href={`/admin/siniestros/${a.datos}`} className="text-xs font-semibold text-brand-700 underline">Ver siniestro</Link></>}
           {a.tipo === "pago_informado" && <> · <Link href="/admin/comprobantes" className="text-xs font-semibold text-brand-700 underline">Ir a pagos informados</Link></>}

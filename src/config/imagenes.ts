@@ -21,9 +21,10 @@ export const IMG = {
   nosotros: { src: "/images/nosotros.webp", alt: "Asesor de seguros atendiendo a una pareja de clientes", w: 1400, h: 934 },
 } satisfies Record<string, Img>;
 
+// Pendientes de foto propia: viaje y consorcios (se muestran con ícono).
 // Pexels: autos 3786091 · motos 5206867 · hogar 9976121 · comercio 4473399 · vida 4609096
 //         accidentes 8631628 · art 8961030 · agro 2255801 · caución 6814526 · rc 7731318
-export const IMG_RAMO: Record<RamoId, Img> = {
+export const IMG_RAMO: Partial<Record<RamoId, Img>> = {
   autos: { src: "/images/autos.webp", alt: "Auto sedán negro estacionado en un camino", w: 1000, h: 1500 },
   motos: { src: "/images/motos.webp", alt: "Motociclista circulando por una avenida", w: 1000, h: 666 },
   hogar: { src: "/images/hogar.webp", alt: "Casa moderna con jardín", w: 1000, h: 666 },

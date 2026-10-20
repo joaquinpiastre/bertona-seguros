@@ -18,9 +18,15 @@ export default async function Configuracion({ searchParams }: { searchParams: Pr
           </div>
         </Card>
 
-        <Card title="Auxilio mecánico (lo que ve el cliente; vino cargado con la información de Meridional)">
+        <Card title="Aviso de certificados por vencer">
+          <div className="max-w-sm">
+            <Field label="Avisar con cuántos días de anticipación" name="dias_aviso_certificado" type="number" min="0" max="120" defaultValue={cfg.dias_aviso_certificado || "15"} required
+              hint="Para las pólizas que se actualizan cada cierto tiempo (ej. cuatrimestral), se crea un aviso cuando falten estos días para que venza el certificado." />
+          </div>
+        </Card>
+
+        <Card title="Auxilio mecánico (solo llamadas; vino cargado con la información de Meridional)">
           <div className="grid gap-4">
-            <Field label="WhatsApp del auxilio (con código de país)" name="auxilio_whatsapp" defaultValue={cfg.auxilio_whatsapp} placeholder="Ej: +54 9 11 6740 8247" className="max-w-sm" />
             <Field label="Teléfono 0800" name="auxilio_telefono" defaultValue={cfg.auxilio_telefono} placeholder="Ej: 0800-333-3244" className="max-w-sm" />
             <TextArea label="Cómo funciona el auxilio mecánico" name="auxilio_texto" rows={7} defaultValue={cfg.auxilio_texto}
             />
@@ -29,10 +35,10 @@ export default async function Configuracion({ searchParams }: { searchParams: Pr
           </div>
         </Card>
 
-        <Card title="Pagos por Mercado Pago (lo que ve el cliente al pagar)">
-          <TextArea label="Instrucciones para pagar por Mercado Pago" name="mp_instrucciones" rows={4} defaultValue={cfg.mp_instrucciones}
+        <Card title="Pagos por transferencia (lo que ve el cliente al pagar)">
+          <TextArea label="Datos para transferir (alias, CBU, titular)" name="mp_instrucciones" rows={4} defaultValue={cfg.mp_instrucciones}
           />
-          <p className="mt-2 text-xs text-ink-soft">Por ejemplo el alias o el link de pago de la empresa. El cliente sube la captura del comprobante y la empresa la aprueba.</p>
+          <p className="mt-2 text-xs text-ink-soft">El cliente ve estos datos al elegir transferencia, sube la captura del comprobante y la empresa lo aprueba.</p>
         </Card>
 
         <SubmitButton variant="gold" pendiente="Guardando…">Guardar configuración</SubmitButton>

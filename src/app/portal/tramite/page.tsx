@@ -18,7 +18,7 @@ export default async function Tramite({ searchParams }: { searchParams: Promise<
   return (
     <>
       <h1 className="text-2xl text-brand-900 sm:text-3xl">Trámite</h1>
-      <p className="mb-6 mt-1 text-sm text-ink-soft">Pedí cambios en los datos de tu póliza: el vehículo, el dominio, la cobertura u otras observaciones. La oficina los revisa y los aplica.</p>
+      <p className="mb-6 mt-1 text-sm text-ink-soft">Contanos qué trámite querés gestionar con tu póliza. La oficina lo revisa y te responde.</p>
       <Flash sp={sp} />
 
       {waUrl && (
@@ -39,10 +39,11 @@ export default async function Tramite({ searchParams }: { searchParams: Promise<
           </form>
           <form action={solicitarTramite} className="grid gap-4 border-t border-line pt-5 sm:grid-cols-2" key={p.id}>
             <input type="hidden" name="poliza_id" value={p.id} />
+            <TextArea label="¿Qué trámite querés gestionar? (observaciones)" name="observaciones" rows={5} required className="sm:col-span-2"
+              placeholder="Ej: Cambié de auto, quiero asegurar el nuevo. / Cambió mi domicilio. / Quiero agregar a otra persona." />
+            <p className="text-sm text-ink-soft sm:col-span-2">Si cambia el vehículo, completá estos datos (si no, dejalos como están):</p>
             <Field label="Vehículo / bien asegurado" name="riesgo" defaultValue={p.riesgo} placeholder="Ej: Toyota Corolla XEI 2.0" className="sm:col-span-2" />
             <Field label="Dominio (patente)" name="dominio" defaultValue={p.dominio} />
-            <Field label="Cobertura" name="cobertura" defaultValue={p.cobertura} placeholder="Ej: Todo riesgo con franquicia" />
-            <TextArea label="Observaciones" name="observaciones" rows={4} className="sm:col-span-2" />
             <div className="sm:col-span-2">
               <SubmitButton variant="gold" pendiente="Enviando…">Enviar trámite</SubmitButton>
               <p className="mt-2 text-xs text-ink-soft">Los cambios no se aplican solos: la oficina los revisa y te confirma.</p>

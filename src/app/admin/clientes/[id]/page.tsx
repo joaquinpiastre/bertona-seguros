@@ -3,10 +3,11 @@ import { dato, type Row } from "@/lib/api";
 import { notFound } from "next/navigation";
 import { SubmitButton } from "@/components/panel/Cliente";
 import { Badge, Card, Field, Flash, LinkBtn, PageHead, SelectField, Tabla, Td, TextArea, Th } from "@/components/panel/ui";
-import { actualizarCliente, alternarCliente, eliminarCliente, crearContactoAdmin, eliminarContactoAdmin, quitarPinCliente } from "@/lib/actions/admin";
-import { ESTADOS_POLIZA, METODOS, PARENTESCOS, fecha, money } from "@/lib/format";
+import { actualizarCliente, alternarCliente, eliminarCliente, crearContactoAdmin, eliminarContactoAdmin, definirClaveCliente } from "@/lib/actions/admin";
+import { ESTADOS_POLIZA, METODOS, PARENTESCOS, fecha, money, waCliente } from "@/lib/format";
+import { PORTAL_URL } from "@/config/empresa";
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; error?: string }> };
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; error?: string; clave?: string }> };
 
 export default async function DetalleCliente({ params, searchParams }: Props) {
   const { id } = await params;
@@ -17,6 +18,9 @@ export default async function DetalleCliente({ params, searchParams }: Props) {
   }>("clienteDetalle", { id: cid });
 
   const volver = `/admin/clientes/${cid}`;
+  const wa = sp.clave && c.telefono
+    ? waCliente(c.telefono, `Hola ${String(c.nombre).split(" ")[0]}! Ya podés ingresar a tu cuenta de Bertona Seguros: entrá a ${PORTAL_URL} con tu DNI ${acceso?.dni ?? c.documento} y esta contraseña: ${sp.clave}. Después, si querés, la cambiás desde "Mis datos".`)
+    : "";
 
   return (
     <>
@@ -33,7 +37,7 @@ export default async function DetalleCliente({ params, searchParams }: Props) {
           <form action={actualizarCliente} className="grid gap-4 sm:grid-cols-2">
             <input type="hidden" name="id" value={cid} />
             <Field label="Nombre y apellido / razón social" name="nombre" defaultValue={c.nombre} required className="sm:col-span-2" />
-            <Field label="DNI (con él ingresa el cliente)" name="documento" defaultValue={c.documento} required hint="Solo números. Es su usuario del portal." />
+            <Field label="DNI (con él ingresa el cliente)" name="documento" defaultValue={c.documento} required hint="Solo números. Es su usuario del portal (ingresa con DNI y contraseña)." />
             <Field label="Teléfono / WhatsApp" name="telefono" type="tel" defaultValue={c.telefono} />
             <Field label="Email" name="email" type="email" defaultValue={c.email} />
             <Field label="Localidad" name="localidad" defaultValue={c.localidad} />
@@ -56,14 +60,21 @@ export default async function DetalleCliente({ params, searchParams }: Props) {
         <Card title="Ingreso al portal">
           {acceso ? (
             <div className="space-y-4 text-sm">
-              <p>El cliente ingresa solo con su DNI: <strong className="text-brand-900">{acceso.dni}</strong></p>
-              <p>{acceso.activo ? <Badge tono="verde">Acceso activo</Badge> : <Badge tono="rojo">Acceso desactivado</Badge>} {acceso.tiene_pin ? <Badge tono="azul">Tiene clave propia</Badge> : <Badge>Sin clave</Badge>}</p>
-              {acceso.tiene_pin && (
-                <form action={quitarPinCliente}>
-                  <input type="hidden" name="cliente_id" value={cid} />
-                  <SubmitButton variant="ghost" small confirmar="¿Quitar la clave del cliente? Volverá a ingresar solo con su DNI.">Quitar su clave</SubmitButton>
-                </form>
+              {sp.clave && (
+                <div className="border-2 border-accent-500 bg-accent-300/15 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-accent-600">Contraseña para pasarle al cliente</p>
+                  <p className="mt-1 font-display text-3xl font-bold tracking-widest text-brand-900">{sp.clave}</p>
+                  <p className="mt-1 text-xs text-ink-soft">Anotala o envíasela ahora: después no se puede volver a ver (solo cambiar por otra).</p>
+                  {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex bg-[#1fa855] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#188a45]">Enviar acceso por WhatsApp</a>}
+                </div>
               )}
+              <p>Usuario (DNI): <strong className="text-brand-900">{acceso.dni}</strong></p>
+              <p>{acceso.activo ? <Badge tono="verde">Acceso activo</Badge> : <Badge tono="rojo">Acceso desactivado</Badge>} {acceso.tiene_clave ? <Badge tono="azul">Tiene contraseña</Badge> : <Badge tono="ambar">Sin contraseña: todavía no puede ingresar</Badge>}</p>
+              <form action={definirClaveCliente} className="space-y-3 border-t border-line pt-4">
+                <input type="hidden" name="cliente_id" value={cid} />
+                <Field label={acceso.tiene_clave ? "Nueva contraseña" : "Contraseña del cliente"} name="clave" autoComplete="off" hint="Mínimo 4 caracteres. Si la dejás vacía se genera una de 6 números." />
+                <SubmitButton variant="gold" small>{acceso.tiene_clave ? "Cambiar contraseña" : "Dar contraseña"}</SubmitButton>
+              </form>
               <p className="text-xs text-ink-soft">Si cambiás el DNI en los datos, el ingreso se actualiza solo. Con una sola póliza inactiva el cliente no puede ingresar; con varias, entra y ve bloqueadas las inactivas.</p>
             </div>
           ) : (

@@ -11,7 +11,7 @@ import { estadoPolizas, soloDigitos } from "./core";
 import { DATOS } from "./data";
 import { DATOS2 } from "./data2";
 import { q1 } from "./db";
-import { documento, exportarPagos, recibo } from "./files";
+import { constancia, documento, exportarPagos, recibo, reciboPublico } from "./files";
 import { NoEncontrado, Redirigir } from "./flash";
 
 const ACCIONES: Record<string, (fd: FormData) => Promise<void>> = { ...admin, ...gestion, ...portal };
@@ -47,31 +47,31 @@ app.post("/auth/login", async (c) => {
   return c.json({ token: await firmarToken(u!.id), rol: u!.rol });
 });
 
-// Ingreso de clientes: solo con el DNI (y una clave opcional si el cliente la activó).
+// Ingreso de clientes: DNI + contraseña (la define la oficina y se puede cambiar).
 app.post("/auth/login-dni", async (c) => {
-  const b = (await c.req.json().catch(() => ({}))) as { dni?: string; pin?: string; ip?: string };
+  const b = (await c.req.json().catch(() => ({}))) as { dni?: string; password?: string; ip?: string };
   const dni = soloDigitos(b.dni);
+  const clave = String(b.password ?? "");
   const ip = String(b.ip ?? "sin-ip").slice(0, 64);
   const claveIp = "ip:" + ip;
   const claveDni = "dni:" + dni;
   if (loginBloqueado(claveIp) || loginBloqueado(claveDni)) return c.json({ error: "Demasiados intentos. Probá de nuevo en unos minutos." });
   if (dni.length < 7 || dni.length > 11) return c.json({ error: "Ingresá tu DNI, solo números." });
+  if (!clave) return c.json({ error: "Ingresá tu contraseña." });
   const u = await q1(
-    `SELECT u.id, u.pin_hash, u.cliente_id FROM usuarios u JOIN clientes c ON c.id = u.cliente_id
+    `SELECT u.id, u.password_hash, u.tiene_clave, u.cliente_id FROM usuarios u JOIN clientes c ON c.id = u.cliente_id
      WHERE u.rol = 'socio' AND u.activo AND c.activo AND (u.dni = $1 OR (length(u.dni) = 11 AND substring(u.dni from 3 for 8) = $1)) LIMIT 1`,
     [dni]
   );
   if (!u) {
     loginFallido(claveIp);
-    return c.json({ error: "No encontramos un cliente con ese DNI. Si ya sos cliente, comunicate con la oficina." });
+    return c.json({ error: "No encontramos un cliente con ese DNI.", noEncontrado: true });
   }
-  if (u.pin_hash) {
-    if (!b.pin) return c.json({ needsPin: true });
-    if (!(await bcrypt.compare(String(b.pin), u.pin_hash))) {
-      loginFallido(claveDni);
-      loginFallido(claveIp);
-      return c.json({ needsPin: true, error: "La clave no es correcta." });
-    }
+  if (!u.tiene_clave) return c.json({ error: "Tu cuenta todavía no tiene contraseña. Pedísela a la oficina por WhatsApp o teléfono." });
+  if (!(await bcrypt.compare(clave, u.password_hash))) {
+    loginFallido(claveDni);
+    loginFallido(claveIp);
+    return c.json({ error: "El DNI o la contraseña no son correctos." });
   }
   const { todas, activas } = await estadoPolizas(u.cliente_id);
   if (todas.length <= 1 && activas.length === 0) return c.json({ error: MSG_NO_ACTIVADA });
@@ -120,6 +120,8 @@ const guard = async (fn: () => Promise<Response>) => {
 };
 app.get("/files/documento/:id", (c) => guard(() => documento(Number(c.req.param("id")))));
 app.get("/files/recibo/:id", (c) => guard(() => recibo(Number(c.req.param("id")), c.req.query("sistema") === "1")));
+app.get("/files/recibo-publico", (c) => guard(() => reciboPublico(c.req.query("t") ?? "")));
+app.get("/files/constancia", (c) => guard(() => constancia(new URL(c.req.url).searchParams)));
 app.get("/files/export", (c) => guard(() => exportarPagos(new URL(c.req.url).searchParams)));
 
 const port = Number(process.env.PORT) || 4000;

@@ -3,6 +3,7 @@
  * Las de /admin exigen administrador; las de /portal exigen socio.
  */
 import { portalUsuario, requireAdmin } from "./auth";
+import { diasAvisoCertificado, enLista } from "./core";
 import { q, q1 } from "./db";
 import { ESTADOS_POLIZA, METODOS, esFecha, hoy, sumarDias } from "./format";
 import { NoEncontrado } from "./flash";
@@ -95,7 +96,9 @@ export const DATOS: Record<string, (sp: SP) => Promise<unknown>> = {
     let aviso: Record<string, unknown> | null = null;
     if (avisoId) {
       aviso = await q1(
-        "SELECT id, cliente_id, cuota_id, importe::float8 AS importe, fecha::text AS fecha, metodo, nota, documento_id FROM avisos_pago WHERE id = $1 AND estado = 'pendiente'",
+        `SELECT id, cliente_id, cuota_id, importe::float8 AS importe, fecha::text AS fecha, metodo, nota, documento_id,
+                COALESCE((SELECT json_agg(cuota_id) FROM aviso_cuotas WHERE aviso_id = avisos_pago.id), '[]'::json) AS cuotas
+         FROM avisos_pago WHERE id = $1 AND estado = 'pendiente'`,
         [avisoId]
       );
       if (aviso && !clienteId) clienteId = Number(aviso.cliente_id);
@@ -124,16 +127,25 @@ export const DATOS: Record<string, (sp: SP) => Promise<unknown>> = {
   async pagoDetalle(sp) {
     await requireAdmin();
     const p = await q1(
-      `SELECT pg.*, pg.fecha::text AS fecha_t, pg.importe::float8 AS imp, cl.nombre AS cliente, cl.telefono, cl.id AS cid,
-              po.numero AS poliza, po.compania, po.dominio, po.riesgo, po.cuotas_cant, c.numero AS cuota_n, u.nombre AS por
-       FROM pagos pg JOIN clientes cl ON cl.id = pg.cliente_id
-       LEFT JOIN polizas po ON po.id = pg.poliza_id LEFT JOIN cuotas c ON c.id = pg.cuota_id LEFT JOIN usuarios u ON u.id = pg.registrado_por
+      `SELECT pg.*, pg.fecha::text AS fecha_t, pg.importe::float8 AS imp, cl.nombre AS cliente, cl.telefono, cl.id AS cid, u.nombre AS por
+       FROM pagos pg JOIN clientes cl ON cl.id = pg.cliente_id LEFT JOIN usuarios u ON u.id = pg.registrado_por
        WHERE pg.id = $1`,
       [idDe(sp)]
     );
     if (!p) throw new NoEncontrado();
-    const docs = await q("SELECT id, tipo, nombre, tamano, creado::text AS creado FROM documentos WHERE pago_id = $1 ORDER BY id", [p.id]);
-    return { p, docs };
+    // Un recibo puede cubrir varias cuotas: se muestran todas.
+    const lineas = await q(
+      `SELECT pg.id, pg.importe::float8 AS importe, po.id AS poliza_id, po.numero AS poliza, po.compania, po.dominio, po.riesgo, po.cuotas_cant,
+              c.numero AS cuota_n, c.vencimiento::text AS vto
+       FROM pagos pg LEFT JOIN polizas po ON po.id = pg.poliza_id LEFT JOIN cuotas c ON c.id = pg.cuota_id
+       WHERE pg.recibo_nro = $1 AND pg.cliente_id = $2 ORDER BY po.id, c.numero`,
+      [p.recibo_nro, p.cliente_id]
+    );
+    const total = lineas.reduce((s, l) => s + (l.importe as number), 0);
+    const docs = await q(
+      `SELECT id, tipo, nombre, tamano, creado::text AS creado FROM documentos WHERE pago_id IN (${enLista(lineas.map((l) => l.id as number))}) ORDER BY id`
+    );
+    return { p, docs, lineas, total };
   },
 
   async clientes(sp) {
@@ -219,15 +231,18 @@ export const DATOS: Record<string, (sp: SP) => Promise<unknown>> = {
       [pid]
     );
     if (!p) throw new NoEncontrado();
-    const [cuotas, docs] = await Promise.all([
+    const [cuotas, docs, certificados] = await Promise.all([
       q(
         `SELECT c.id, c.numero, c.vencimiento::text AS venc, c.importe::float8 AS importe, c.estado,
                 (SELECT pg.id FROM pagos pg WHERE pg.cuota_id = c.id AND pg.estado = 'aplicado' ORDER BY pg.id DESC LIMIT 1) AS pago_id,
                 (SELECT pg.recibo_nro FROM pagos pg WHERE pg.cuota_id = c.id AND pg.estado = 'aplicado' ORDER BY pg.id DESC LIMIT 1) AS recibo
          FROM cuotas c WHERE c.poliza_id = $1 ORDER BY c.numero`, [pid]),
       q("SELECT id, tipo, nombre, tamano, creado::text AS creado FROM documentos WHERE poliza_id = $1 AND pago_id IS NULL ORDER BY id", [pid]),
+      q(
+        `SELECT ce.id, ce.desde::text AS desde, ce.hasta::text AS hasta, ce.nota, ce.documento_id, d.nombre AS doc_nombre
+         FROM certificados ce LEFT JOIN documentos d ON d.id = ce.documento_id WHERE ce.poliza_id = $1 ORDER BY ce.hasta DESC, ce.id DESC`, [pid]),
     ]);
-    return { p, cuotas, docs };
+    return { p, cuotas, docs, certificados, diasAviso: await diasAvisoCertificado() };
   },
 
   async avisos() {
@@ -235,7 +250,9 @@ export const DATOS: Record<string, (sp: SP) => Promise<unknown>> = {
     const filas = await q(
       `SELECT a.id, a.estado, a.motivo, a.importe::float8 AS importe, a.fecha::text AS fecha, a.metodo, a.nota, a.documento_id, a.creado::text AS creado,
               a.cliente_id, cl.nombre AS cliente, cl.telefono, p.numero AS poliza, p.compania, p.dominio, c.id AS cuota_id, c.numero AS cuota_n,
-              c.importe::float8 AS cuota_importe, p.cuotas_cant, a.pago_id
+              c.importe::float8 AS cuota_importe, p.cuotas_cant, a.pago_id,
+              (SELECT json_agg(json_build_object('poliza', p2.numero, 'compania', p2.compania, 'cuota', c2.numero, 'total', p2.cuotas_cant, 'dominio', p2.dominio, 'venc', c2.vencimiento::text, 'importe', c2.importe::float8) ORDER BY p2.id, c2.numero)
+                  FROM aviso_cuotas ac JOIN cuotas c2 ON c2.id = ac.cuota_id JOIN polizas p2 ON p2.id = c2.poliza_id WHERE ac.aviso_id = a.id) AS lineas
        FROM avisos_pago a JOIN clientes cl ON cl.id = a.cliente_id
        LEFT JOIN polizas p ON p.id = a.poliza_id LEFT JOIN cuotas c ON c.id = a.cuota_id
        WHERE a.estado = 'pendiente' OR a.creado > now() - interval '30 days'

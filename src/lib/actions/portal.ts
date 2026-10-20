@@ -17,8 +17,8 @@ export async function actualizarPerfil(fd: FormData) {
   await accion("actualizarPerfil", fd);
 }
 
-export async function configurarPin(fd: FormData) {
-  await accion("configurarPin", fd);
+export async function cambiarClave(fd: FormData) {
+  await accion("cambiarClave", fd);
 }
 
 export async function pagarCuota(fd: FormData) {

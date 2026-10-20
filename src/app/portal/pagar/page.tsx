@@ -15,7 +15,7 @@ export default async function Pagar({ searchParams }: { searchParams: Promise<{ 
   return (
     <>
       <h1 className="text-2xl text-brand-900 sm:text-3xl">Pagar</h1>
-      <p className="mb-6 mt-1 text-sm text-ink-soft">Elegí la cuota y cómo vas a pagar. Los pagos pueden demorar hasta 48 hs en acreditarse.</p>
+      <p className="mb-6 mt-1 text-sm text-ink-soft">Elegí una o varias cuotas y cómo vas a pagar: se hace un solo recibo. Los pagos pueden demorar hasta 48 hs en acreditarse. Consultas de cobranza: 260 400-6753.</p>
       <Flash sp={sp} />
       {cuotas.length === 0 ? (
         <Card>

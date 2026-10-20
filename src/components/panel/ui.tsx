@@ -107,9 +107,9 @@ export function Field({ label, name, type = "text", defaultValue, required, plac
 }
 
 export function SelectField({
-  label, name, options, defaultValue, required, className = "", vacio,
+  label, name, options, defaultValue, required, className = "", vacio, hint,
 }: {
-  label: string; name: string; options: [string, string][]; defaultValue?: string | number | null; required?: boolean; className?: string; vacio?: string;
+  label: string; name: string; options: [string, string][]; defaultValue?: string | number | null; required?: boolean; className?: string; vacio?: string; hint?: string;
 }) {
   return (
     <label className={`block text-base font-semibold text-brand-900 ${className}`}>
@@ -121,15 +121,16 @@ export function SelectField({
           <option key={v} value={v}>{l}</option>
         ))}
       </select>
+      {hint && <span className="mt-1 block text-sm font-normal text-ink-soft">{hint}</span>}
     </label>
   );
 }
 
-export function TextArea({ label, name, defaultValue, rows = 3, className = "" }: { label: string; name: string; defaultValue?: string | null; rows?: number; className?: string }) {
+export function TextArea({ label, name, defaultValue, rows = 3, className = "", required, placeholder }: { label: string; name: string; defaultValue?: string | null; rows?: number; className?: string; required?: boolean; placeholder?: string }) {
   return (
     <label className={`block text-base font-semibold text-brand-900 ${className}`}>
       {label}
-      <textarea name={name} rows={rows} defaultValue={defaultValue ?? undefined} className={inputCls} />
+      <textarea name={name} rows={rows} defaultValue={defaultValue ?? undefined} required={required} placeholder={placeholder} className={inputCls} />
     </label>
   );
 }

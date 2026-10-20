@@ -12,6 +12,12 @@ const base = {
 };
 
 export const RAMO_ICONS: Record<RamoId, (p: P) => React.JSX.Element> = {
+  viaje: (p) => (
+    <svg {...base} {...p}><path d="M3.5 13.5 20.5 6l-3 12-5.2-3.3-2.3 3.3-.7-4.4-5.8-.1Z" /><path d="m12.3 14.700 5.200-6.200" /></svg>
+  ),
+  consorcios: (p) => (
+    <svg {...base} {...p}><path d="M5 20.5V5.500a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v15M14 10h4a1 1 0 0 1 1 1v9.500M3.500 20.500h17" /><path d="M8.500 8h2M8.500 11.500h2M8.500 15h2" /></svg>
+  ),
   autos: (p) => (
     <svg {...base} {...p}><path d="M5 16V12l1.6-4.2A2 2 0 0 1 8.5 6.5h7a2 2 0 0 1 1.9 1.3L19 12v4" /><path d="M3.5 16h17v2.5h-3V17M6.5 17v1.5h-3V16" /><circle cx="7.5" cy="13.5" r=".6" /><circle cx="16.5" cy="13.5" r=".6" /><path d="M5.5 11.5h13" /></svg>
   ),

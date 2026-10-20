@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { Banda, PageShell } from "@/components/PageShell";
+import { PageHero, PageShell, btnPrimario, btnBordeAzul } from "@/components/PageShell";
+import { IMG } from "@/config/imagenes";
 import { EMPRESA, waLink } from "@/config/empresa";
 import { AUXILIO, BAJA_RECLAMOS, MERIDIONAL, PAGOS, SINIESTROS } from "@/config/meridional";
 
 export const metadata: Metadata = {
-  title: "Ayuda al cliente: siniestros, auxilio mecánico y pagos | Bertona Seguros",
+  title: "Ayuda al cliente: siniestros, auxilio mecánico y pagos",
   description: "Qué hacer ante un siniestro, cómo pedir auxilio mecánico, medios de pago, baja y reclamos. Bertona Seguros, San Rafael, Mendoza.",
   alternates: { canonical: "/ayuda" },
 };
@@ -15,12 +16,12 @@ const h3 = "text-xl text-brand-900";
 export default function Ayuda() {
   return (
     <PageShell>
-      <Banda eyebrow="Ayuda al cliente" titulo="Todo lo que necesitás saber, explicado simple" texto="Siniestros, auxilio mecánico, medios de pago, baja y reclamos. Y si preferís que te ayudemos, escribinos: respondemos con gusto." />
+      <PageHero eyebrow="Atención a clientes" titulo="Todo lo que necesitás saber, explicado simple" texto="Siniestros, auxilio mecánico, medios de pago, baja y reclamos. Y si preferís que te ayudemos, escribinos: respondemos con gusto." img={IMG.atuel} migas={[{ href: "/", t: "Inicio" }, { t: "Atención a clientes" }]} />
 
-      <nav aria-label="Secciones de ayuda" className="border-b border-line bg-white">
+      <nav aria-label="Secciones de ayuda" className="sticky top-[72px] z-30 border-b border-line bg-white/95 backdrop-blur lg:top-[108px]">
         <ul className="mx-auto flex max-w-6xl gap-2 overflow-x-auto px-4 py-3 sm:px-6">
           {[["siniestros", "Siniestros"], ["auxilio", "Auxilio mecánico"], ["pagos", "Medios de pago"], ["baja", "Baja y reclamos"]].map(([id, l]) => (
-            <li key={id}><a href={`#${id}`} className="block whitespace-nowrap border border-line px-4 py-2 text-sm font-semibold text-brand-800 hover:border-brand-500">{l}</a></li>
+            <li key={id}><a href={`#${id}`} className="block whitespace-nowrap rounded-full border border-line px-4 py-2 text-sm font-bold text-brand-800 hover:border-sky-500 hover:bg-sky-50">{l}</a></li>
           ))}
         </ul>
       </nav>
@@ -30,23 +31,23 @@ export default function Ayuda() {
         <div className="mx-auto max-w-4xl px-4 sm:px-6">
           <h2 className={h2}>Tuve un siniestro: qué hacer</h2>
           <p className="mt-3 text-lg text-ink-soft">{SINIESTROS.intro}</p>
-          <div className="mt-6 border-l-4 border-red-600 bg-red-50 px-5 py-4 text-red-900">
+          <div className="mt-6 rounded-2xl border-l-4 border-red-600 bg-red-50 px-5 py-4 text-red-900">
             <strong>Urgente.</strong> {SINIESTROS.urgente}
           </div>
 
           <h3 className={`${h3} mt-10`}>A quién avisar</h3>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {SINIESTROS.canales.map((c) => (
-              <div key={c.titulo} className={`border p-5 ${c.destacado ? "border-accent-500 bg-accent-300/15" : "border-line bg-white"}`}>
+              <div key={c.titulo} className={`rounded-2xl border p-5 shadow-card ${c.destacado ? "border-sky-500 bg-sky-50" : "border-line bg-white"}`}>
                 <p className="font-display text-lg font-semibold text-brand-900">{c.titulo}</p>
                 <p className="mt-1 text-sm leading-relaxed text-ink-soft">{c.texto}</p>
               </div>
             ))}
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
-            <a href={waLink("Hola! Tuve un siniestro y necesito ayuda.")} target="_blank" rel="noopener noreferrer" className="bg-accent-500 px-6 py-3.5 font-semibold text-brand-900 hover:bg-accent-400">Avisar a Bertona por WhatsApp</a>
-            <a href={`tel:${EMPRESA.telefonoTel}`} className="border border-brand-900 px-6 py-3.5 font-semibold text-brand-900 hover:bg-brand-50">Llamar a la oficina</a>
-            <a href={`tel:${MERIDIONAL.telClientesTel}`} className="border border-brand-900 px-6 py-3.5 font-semibold text-brand-900 hover:bg-brand-50">Llamar a Meridional {MERIDIONAL.telClientes}</a>
+            <a href={waLink("Hola! Tuve un siniestro y necesito ayuda.")} target="_blank" rel="noopener noreferrer" className={btnPrimario}>Avisar a Bertona por WhatsApp</a>
+            <a href={`tel:${EMPRESA.telefonoTel}`} className={btnBordeAzul}>Llamar a la oficina</a>
+            <a href={`tel:${MERIDIONAL.telClientesTel}`} className={btnBordeAzul}>Llamar a Meridional {MERIDIONAL.telClientes}</a>
           </div>
 
           <h3 className={`${h3} mt-10`}>Datos que conviene tener a mano</h3>
@@ -55,9 +56,9 @@ export default function Ayuda() {
           <h3 className={`${h3} mt-10`}>Qué te van a pedir según el caso</h3>
           <div className="mt-4 space-y-3">
             {SINIESTROS.porTipo.map((t) => (
-              <details key={t.titulo} className="group border border-line bg-white">
+              <details key={t.titulo} className="group rounded-2xl border border-line bg-white shadow-card open:border-sky-500">
                 <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 font-display text-lg font-semibold text-brand-900 [&::-webkit-details-marker]:hidden">
-                  {t.titulo}<span className="text-accent-600 transition group-open:rotate-45" aria-hidden>+</span>
+                  {t.titulo}<span className="text-sky-600 transition group-open:rotate-45" aria-hidden>+</span>
                 </summary>
                 <ul className="list-disc space-y-1.5 px-5 pb-5 pl-10 text-ink-soft">{t.items.map((i) => <li key={i}>{i}</li>)}</ul>
               </details>
@@ -71,22 +72,21 @@ export default function Ayuda() {
       </section>
 
       {/* Auxilio */}
-      <section id="auxilio" className="bg-soft py-16 sm:py-20">
+      <section id="auxilio" className="bg-sky-50 py-16 sm:py-20">
         <div className="mx-auto max-w-4xl px-4 sm:px-6">
           <h2 className={h2}>{AUXILIO.titulo}</h2>
           <p className="mt-3 text-lg text-ink-soft">{AUXILIO.intro}</p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <a href={MERIDIONAL.whatsappLink} target="_blank" rel="noopener noreferrer" className="bg-[#1fa855] px-6 py-3.5 font-semibold text-white hover:bg-[#188a45]">Pedir auxilio por WhatsApp</a>
-            <a href={`tel:${MERIDIONAL.telClientesTel}`} className="border border-brand-900 px-6 py-3.5 font-semibold text-brand-900 hover:bg-white">Llamar al {MERIDIONAL.telClientes}</a>
+            <a href={`tel:${MERIDIONAL.telClientesTel}`} className={btnPrimario}>Llamar al {MERIDIONAL.telClientes}</a>
           </div>
 
           <h3 className={`${h3} mt-10`}>Cómo se pide</h3>
           <ol className="mt-3 list-decimal space-y-2 pl-5 text-ink-soft">{AUXILIO.pasos.map((p) => <li key={p}>{p}</li>)}</ol>
 
           <h3 className={`${h3} mt-10`}>Servicios y kilómetros según tu cobertura</h3>
-          <div className="mt-4 overflow-x-auto border border-line bg-white">
+          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
             <table className="w-full min-w-[520px] text-left text-sm">
-              <thead className="border-b border-line bg-brand-50 text-xs uppercase tracking-wider text-ink-soft"><tr><th className="px-4 py-3">Cobertura</th><th className="px-4 py-3">Servicios</th><th className="px-4 py-3">Remolque</th></tr></thead>
+              <thead className="border-b border-line bg-sky-50 text-xs uppercase tracking-wider text-ink-soft"><tr><th className="px-4 py-3">Cobertura</th><th className="px-4 py-3">Servicios</th><th className="px-4 py-3">Remolque</th></tr></thead>
               <tbody className="divide-y divide-line">
                 {AUXILIO.planes.map((p) => (<tr key={p.cobertura}><td className="px-4 py-3 font-semibold text-brand-900">{p.cobertura}</td><td className="px-4 py-3">{p.servicios}</td><td className="px-4 py-3 text-ink-soft">{p.km}</td></tr>))}
               </tbody>
@@ -107,24 +107,24 @@ export default function Ayuda() {
           <p className="mt-3 text-lg text-ink-soft">{PAGOS.intro}</p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {PAGOS.medios.map((m) => (
-              <div key={m.titulo} className="border border-line p-5">
+              <div key={m.titulo} className="rounded-2xl border border-line bg-white p-5 shadow-card">
                 <p className="font-display text-lg font-semibold text-brand-900">{m.titulo}</p>
                 <p className="mt-1 text-sm leading-relaxed text-ink-soft">{m.texto}</p>
               </div>
             ))}
           </div>
           <p className="mt-5 text-sm text-ink-soft">{PAGOS.nota}</p>
-          <a href={waLink("Hola! Necesito mi cuponera / código de pago.")} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-brand-900 px-6 py-3.5 font-semibold text-white hover:bg-brand-700">Pedir mi cuponera por WhatsApp</a>
+          <a href={waLink("Hola! Necesito mi cuponera / código de pago.")} target="_blank" rel="noopener noreferrer" className={`${btnPrimario} mt-4`}>Pedir mi cuponera por WhatsApp</a>
         </div>
       </section>
 
       {/* Baja y reclamos */}
-      <section id="baja" className="bg-soft py-16 sm:py-20">
+      <section id="baja" className="bg-sky-50 py-16 sm:py-20">
         <div className="mx-auto grid max-w-4xl gap-10 px-4 sm:px-6 md:grid-cols-2">
           <div>
             <h2 className="text-2xl text-brand-900 sm:text-3xl">Pedir la baja de un seguro</h2>
             <ul className="mt-4 list-disc space-y-2 pl-5 text-ink-soft">{BAJA_RECLAMOS.baja.map((b) => <li key={b}>{b}</li>)}</ul>
-            <a href={MERIDIONAL.solicitudBaja} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-sm font-semibold text-brand-700 underline underline-offset-4">Formulario de baja de Meridional</a>
+            <a href={MERIDIONAL.solicitudBaja} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-sm font-semibold text-sky-600 underline underline-offset-4">Formulario de baja de Meridional</a>
           </div>
           <div>
             <h2 className="text-2xl text-brand-900 sm:text-3xl">Reclamos</h2>
