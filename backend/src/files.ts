@@ -1,7 +1,7 @@
 import { getUsuario, pagoDeTokenRecibo } from "./auth";
 import { TEXTO_BLOQUEO, bloqueoPoliza } from "./core";
 import { q1 } from "./db";
-import { METODOS, esFecha, fecha, hoy } from "./format";
+import { METODOS, PERIODICIDAD, esFecha, fecha, hoy, sumarMeses } from "./format";
 import { ADVERTENCIAS_CONSTANCIA, generarConstanciaPdf, generarReciboPdf, type ConstanciaData } from "./pdf";
 import { datosReciboGrupo, listarPagos } from "./queries";
 
@@ -25,7 +25,11 @@ export async function documento(id: number): Promise<Response> {
 async function reciboPdf(pagoId: number) {
   const g = await datosReciboGrupo(pagoId);
   if (!g) return null;
-  const prox = g.lineas.map((l) => l.prox).filter(Boolean).sort()[0] ?? "";
+  // Próximo vencimiento: la siguiente cuota pendiente; si se pagó la última, el que sigue (mismo día del mes siguiente, según la frecuencia de las cuotas).
+  const prox = g.lineas
+    .map((l) => l.prox || (l.vto ? sumarMeses(l.vto, PERIODICIDAD[l.periodicidad]?.meses ?? 1) : ""))
+    .filter(Boolean)
+    .sort()[0] ?? "";
   const pdf = await generarReciboPdf({
     nro: g.cab.recibo_nro,
     cliente: g.cab.cliente,
@@ -90,6 +94,7 @@ export function constanciaDeParametros(get: (k: string) => string | null | undef
   const t = (k: string) => String(get(k) ?? "").trim();
   return {
     emitida: esFecha(t("emitida")) ? t("emitida") : hoy(),
+    vence: esFecha(t("vence")) ? t("vence") : "",
     numero: t("numero"),
     asegurado: t("asegurado"),
     dni: t("dni"),

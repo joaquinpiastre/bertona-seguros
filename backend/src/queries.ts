@@ -43,7 +43,7 @@ export async function datosReciboGrupo(pagoId: number) {
   );
   if (!cab) return null;
   const lineas = await q(
-    `SELECT pg.id, pg.poliza_id, pg.importe::float8 AS importe, p.numero AS poliza, p.riesgo, p.dominio, p.compania, p.cuotas_cant,
+    `SELECT pg.id, pg.poliza_id, pg.importe::float8 AS importe, p.numero AS poliza, p.riesgo, p.dominio, p.compania, p.cuotas_cant, p.periodicidad,
             c.numero AS cuota_n, c.vencimiento::text AS vto,
             (SELECT n.vencimiento::text FROM cuotas n
                WHERE c.id IS NOT NULL AND n.poliza_id = pg.poliza_id AND n.numero > c.numero AND n.estado = 'pendiente'

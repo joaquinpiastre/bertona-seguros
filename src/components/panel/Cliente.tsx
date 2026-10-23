@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { btnDanger, btnGold, btnGhost, btnPrimary, btnSm } from "./ui";
 
@@ -185,6 +185,49 @@ export function CobroForm({
         </label>
       </div>
       <SubmitButton variant="gold" pendiente="Registrando…">Registrar cobro y emitir recibo</SubmitButton>
+    </form>
+  );
+}
+
+/** Casilla "Escrito" de cobranza: al tocarla se guarda sola y queda registrado a quién ya se le escribió. */
+export function EscritoCheck({ action, ids, marcado, texto, volver }: { action: (fd: FormData) => void | Promise<void>; ids: number[]; marcado: boolean; texto?: string; volver: string }) {
+  return (
+    <form action={action} className="inline-flex flex-wrap items-center gap-2">
+      <input type="hidden" name="volver" value={volver} />
+      <input type="hidden" name="escrito" value={marcado ? "0" : "1"} />
+      {ids.map((id) => <input key={id} type="hidden" name="cuota_id" value={id} />)}
+      <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold text-brand-900">
+        <input type="checkbox" checked={marcado} onChange={(e) => e.currentTarget.form?.requestSubmit()} className="h-5 w-5 cursor-pointer" />
+        Escrito
+      </label>
+      {texto && <span className="text-xs text-ink-soft">{texto}</span>}
+    </form>
+  );
+}
+
+/**
+ * Botón de WhatsApp de cobranza: abre la conversación y deja marcado al cliente como "enviado" en el mismo toque.
+ * Si ya se le escribió, pide confirmar antes de mandar otro mensaje para no repetirlos.
+ */
+export function EnviarWhatsApp({ action, ids, url, enviadoEl, completo, volver }: { action: (fd: FormData) => void | Promise<void>; ids: number[]; url: string; enviadoEl?: string; completo: boolean; volver: string }) {
+  const form = useRef<HTMLFormElement>(null);
+  return (
+    <form ref={form} action={action} className="inline-flex flex-wrap items-center gap-3">
+      <input type="hidden" name="volver" value={volver} />
+      <input type="hidden" name="escrito" value="1" />
+      {ids.map((id) => <input key={id} type="hidden" name="cuota_id" value={id} />)}
+      <button
+        type="button"
+        onClick={() => {
+          if (completo && !window.confirm(`Ya le enviaste el mensaje${enviadoEl ? ` el ${enviadoEl}` : ""}. ¿Querés enviarlo otra vez?`)) return;
+          window.open(url, "_blank", "noopener,noreferrer");
+          form.current?.requestSubmit();
+        }}
+        className={`inline-flex min-h-11 items-center gap-2 px-5 py-2.5 text-sm font-semibold ${completo ? "border border-line bg-white text-brand-800 hover:border-brand-500" : "bg-[#1fa855] text-white hover:bg-[#188a45]"}`}
+      >
+        {completo ? "Enviar de nuevo por WhatsApp" : "Enviar WhatsApp con el total y el detalle"}
+      </button>
+      {completo && <span className="text-sm font-semibold text-emerald-700">✓ Enviado{enviadoEl ? ` el ${enviadoEl}` : ""}</span>}
     </form>
   );
 }

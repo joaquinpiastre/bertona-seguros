@@ -99,6 +99,9 @@ export async function guardarConfig(fd: FormData) {
   const avisoCert = Math.round(num(fd, "dias_aviso_certificado"));
   if (!(avisoCert >= 0 && avisoCert <= 120)) ir("/admin/configuracion", "error", "Los días de aviso del certificado deben estar entre 0 y 120.");
   await setConfig("dias_aviso_certificado", String(avisoCert));
+  const refact = Math.round(num(fd, "dias_refacturacion"));
+  if (!(refact >= 0 && refact <= 120)) ir("/admin/configuracion", "error", "Los días para refacturar deben estar entre 0 y 120.");
+  await setConfig("dias_refacturacion", String(refact));
   for (const k of ["auxilio_telefono", "auxilio_texto", "auxilio_planes", "mp_instrucciones"]) await setConfig(k, txt(fd, k));
   ir("/admin/configuracion", "ok", "Configuración guardada.");
 }
@@ -193,10 +196,17 @@ export async function guardarConstancia(fd: FormData) {
   if (!d.asegurado || !d.poliza) ir(volver, "error", "Completá el nombre del asegurado y el número de póliza.");
   if (txt(fd, "desde") && !esFecha(txt(fd, "desde"))) ir(volver, "error", "La fecha de vigencia desde no es válida.");
   if (txt(fd, "hasta") && !esFecha(txt(fd, "hasta"))) ir(volver, "error", "La fecha de vigencia hasta no es válida.");
+  if (txt(fd, "vence") && !esFecha(txt(fd, "vence"))) ir(volver, "error", "La fecha de vencimiento no es válida.");
+  if (d.vence && d.vence <= d.emitida) ir(volver, "error", "El vencimiento tiene que ser posterior a la fecha de emisión.");
   const pdf = await generarConstanciaPdf(d);
-  await guardarDoc(
+  const docId = await guardarDoc(
     { nombre: `Constancia de cobertura ${d.poliza}.pdf`, mime: "application/pdf", datos: Buffer.from(pdf) },
     { cliente_id: p!.cliente_id, poliza_id: pid, tipo: "certificado", subido_por: yo.id }
   );
-  ir(`/admin/polizas/${pid}`, "ok", "Constancia guardada en los papeles de la póliza: el cliente ya puede descargarla.");
+  // Con vencimiento, la constancia queda registrada como certificado del período: el sistema avisa antes de que venza.
+  if (d.vence) {
+    await q("INSERT INTO certificados (poliza_id, desde, hasta, documento_id) VALUES ($1,$2,$3,$4)", [pid, d.emitida, d.vence, docId]);
+    await q("UPDATE alertas SET estado = 'resuelta', resuelta_en = now() WHERE tipo = 'certificado' AND poliza_id = $1 AND estado = 'pendiente'", [pid]);
+  }
+  ir(`/admin/polizas/${pid}`, "ok", `Constancia guardada en los papeles de la póliza: el cliente ya puede descargarla.${d.vence ? " Se registró su vencimiento para avisarte antes de que venza." : ""}`);
 }

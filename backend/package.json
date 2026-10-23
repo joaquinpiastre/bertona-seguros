@@ -18,7 +18,8 @@
     "hono": "^4.13.13",
     "jose": "^6.2.12",
     "pdf-lib": "^1.17.1",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "unpdf": "^1.7.0"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",

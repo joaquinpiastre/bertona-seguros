@@ -6,7 +6,9 @@ import { bodyLimit } from "hono/body-limit";
 import * as admin from "./actions/admin";
 import * as gestion from "./actions/gestion";
 import * as portal from "./actions/portal";
-import { MSG_NO_ACTIVADA, contexto, firmarToken, loginBloqueado, loginFallido, loginOk, usuarioDeToken } from "./auth";
+import { MSG_NO_ACTIVADA, contexto, firmarToken, getUsuario, loginBloqueado, loginFallido, loginOk, usuarioDeToken } from "./auth";
+import { leerArchivo } from "./archivos";
+import { leerCertificadoPdf } from "./certificado-pdf";
 import { estadoPolizas, soloDigitos } from "./core";
 import { DATOS } from "./data";
 import { DATOS2 } from "./data2";
@@ -94,6 +96,19 @@ app.post("/actions/:name", bodyLimit({ maxSize: 12 * 1024 * 1024 }), async (c) =
     if (e instanceof Redirigir) return c.json({ redirect: e.url });
     console.error("[accion]", c.req.param("name"), e);
     return c.json({ error: "Error interno" }, 500);
+  }
+});
+
+// Lee las fechas (y póliza / patente) de la constancia de cobertura de la compañía para completar el formulario. Solo lee el PDF; no lo guarda.
+app.post("/leer-certificado", bodyLimit({ maxSize: 6 * 1024 * 1024 }), async (c) => {
+  const u = await getUsuario();
+  if (!u || u.rol !== "admin") return c.json({ error: "No autorizado" }, 403);
+  try {
+    const a = await leerArchivo(await c.req.formData(), "archivo");
+    if (!a || a.mime !== "application/pdf") return c.json({ datos: {} });
+    return c.json({ datos: await leerCertificadoPdf(a.datos).catch(() => ({})) });
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : "No se pudo leer el archivo." }, 400);
   }
 });
 

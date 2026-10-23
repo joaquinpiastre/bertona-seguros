@@ -119,7 +119,7 @@ const centro = (c: Ctx, t: string, xc: number, top: number, size: number, font: 
 const rect = (c: Ctx, x: number, top: number, w: number, h: number, color: ReturnType<typeof rgb>) =>
   c.page.drawRectangle({ x, y: c.H - top - h, width: w, height: h, color });
 
-// ───────── Recibo (media hoja A4: arriba el recibo, abajo queda en blanco) ─────────
+// ───────── Recibo (media hoja A4; si tiene muchas cuotas, hoja completa) ─────────
 /**
  * El recibo ocupa la mitad superior de una hoja A4 vertical (595 x 421), de modo que al imprimirlo
  * queda del tamaño de media hoja. Cubre una o varias cuotas pagadas juntas.
@@ -166,24 +166,55 @@ export async function generarReciboPdf(d: ReciboData): Promise<Uint8Array> {
   c.page.drawRectangle({ x: 458, y: c.H - 163, width: sw + 16, height: 22, borderColor: colorSello, borderWidth: 1.8, rotate: degrees(2) });
   c.page.drawText(sello, { x: 466, y: c.H - 156, size: 15, font: c.bold, color: colorSello, rotate: degrees(2) });
 
-  // Tabla de cuotas
-  const MAX = 8;
-  let filas = d.lineas.map((l) => ({
+  // Tabla de cuotas: se detallan TODAS las cuotas pagadas. Hasta 8 caben en la media hoja; con más, el recibo usa la hoja
+  // completa (y sigue en otra hoja si hiciera falta).
+  const filas = d.lineas.map((l) => ({
     poliza: l.poliza, comp: l.compania, riesgo: [l.riesgo, l.dominio].filter(Boolean).join(" · "), cuota: l.cuota, vto: l.vtoCuota ? fecha(l.vtoCuota) : "-", importe: l.importe,
   }));
-  if (filas.length > MAX) {
-    const resto = filas.slice(MAX - 1);
-    filas = [...filas.slice(0, MAX - 1), { poliza: "", comp: "", riesgo: `y ${resto.length} cuotas más`, cuota: "", vto: "", importe: resto.reduce((s, f) => s + f.importe, 0) }];
-  }
-  const rowH = filas.length <= 3 ? 21 : filas.length <= 6 ? 16 : 12;
-  const fs = filas.length <= 3 ? 9.5 : filas.length <= 6 ? 8.5 : 7.5;
-  let top = 176;
-  rect(c, M, top, W - 2 * M, 14, SKY_L);
+  const completa = filas.length > 8;
+  const alto = completa ? 842 : 421; // alto del área del recibo
+  const rowH = filas.length <= 3 ? 21 : filas.length <= 6 ? 16 : !completa ? 12 : filas.length <= 20 ? 14 : 12;
+  const fs = filas.length <= 3 ? 9.5 : filas.length <= 6 ? 8.5 : !completa ? 7.5 : filas.length <= 20 ? 8 : 7.5;
+  const legal = envolver(c.bold, safe(RECIBO_LEGAL), 6.1, W - 2 * M);
+  const ssnW = 58;
+  const merW = 82;
+  // Alto del cierre (total, agradecimiento, texto legal, SSN / productor / Meridional) para saber si entra en la hoja.
+  const cierre = 18 + 12 + 9 + legal.length * 7.2 + 8 + Math.max(ssnW * SSN_RATIO, merW * MERIDIONAL_RATIO + 2, 26);
+
+  const pie = () => {
+    rect(c, 0, alto - 18, W, 18, NAVY);
+    rect(c, 0, alto - 20, W, 2, GOLD);
+    centro(
+      c,
+      `GRUPO BERTONA · ${DIRECCION_COMPLETA} · Cobranza ${TELEFONO_COBRANZA_VISIBLE} · Consultas y siniestros ${EMPRESA.telefonoVisible.replace("+54 ", "")} · bertonaseguros.com`,
+      W / 2,
+      alto - 6.5,
+      6.4,
+      c.bold,
+      WHITE
+    );
+  };
+  const cabeceraTabla = (t: number) => {
+    rect(c, M, t, W - 2 * M, 14, SKY_L);
+    const X = { pol: M + 8, riesgo: 150, cuota: 345, vto: 410 };
+    for (const [x, tt] of [[X.pol, "PÓLIZA"], [X.riesgo, "RIESGO / DOMINIO"], [X.cuota, "CUOTA"], [X.vto, "VENCIMIENTO"]] as [number, string][]) txt(c, tt, x, t + 9.5, 6.5, c.bold, NAVY);
+    derecha(c, "IMPORTE", W - M - 8, t + 9.5, 6.5, c.bold, NAVY);
+    return t + 14;
+  };
+  const hojaNueva = () => {
+    pie();
+    c.page = c.doc.addPage([595, 842]);
+    rect(c, 0, 0, W, 40, NAVY);
+    rect(c, 0, 40, W, 3, GOLD);
+    logo(c, M, 6, 28);
+    derecha(c, `RECIBO N° ${String(d.nro).padStart(6, "0")} (continuación)`, W - M, 26, 10, c.bold, WHITE);
+    return 54;
+  };
+
   const X = { pol: M + 8, riesgo: 150, cuota: 345, vto: 410 };
-  for (const [x, t] of [[X.pol, "PÓLIZA"], [X.riesgo, "RIESGO / DOMINIO"], [X.cuota, "CUOTA"], [X.vto, "VENCIMIENTO"]] as [number, string][]) txt(c, t, x, top + 9.5, 6.5, c.bold, NAVY);
-  derecha(c, "IMPORTE", W - M - 8, top + 9.5, 6.5, c.bold, NAVY);
-  top += 14;
+  let top = cabeceraTabla(176);
   filas.forEach((f, i) => {
+    if (top + rowH > alto - 26) top = cabeceraTabla(hojaNueva());
     if (i % 2) rect(c, M, top, W - 2 * M, rowH, SOFT);
     const base = top + rowH / 2 + fs / 3;
     txt(c, f.poliza, X.pol, base, ajustar(c.bold, safe(f.poliza), 105, fs, 6), c.bold, INK);
@@ -193,6 +224,7 @@ export async function generarReciboPdf(d: ReciboData): Promise<Uint8Array> {
     derecha(c, money(f.importe), W - M - 8, base, fs, c.bold, INK);
     top += rowH;
   });
+  if (completa && top + cierre > alto - 22) top = hojaNueva();
   rect(c, M, top, W - 2 * M, 18, NAVY);
   txt(c, d.lineas.length > 1 ? `TOTAL (${d.lineas.length} cuotas)` : "TOTAL ABONADO", M + 8, top + 12.5, 8, c.bold, WHITE);
   derecha(c, money(total), W - M - 8, top + 13, 11, c.bold, WHITE);
@@ -202,7 +234,6 @@ export async function generarReciboPdf(d: ReciboData): Promise<Uint8Array> {
   top += 12;
   centro(c, "¡Gracias por confiar en Bertona Seguros!", W / 2, top, 9, c.ital, NAVY);
   top += 9;
-  const legal = envolver(c.bold, safe(RECIBO_LEGAL), 6.1, W - 2 * M);
   for (const l of legal) {
     top += 7.2;
     centro(c, l, W / 2, top, 6.1, c.bold, INK);
@@ -210,30 +241,16 @@ export async function generarReciboPdf(d: ReciboData): Promise<Uint8Array> {
 
   // Superintendencia, productor y Meridional
   top += 8;
-  const ssnW = 58;
   c.page.drawImage(c.ssn, { x: M, y: c.H - top - ssnW * SSN_RATIO, width: ssnW, height: ssnW * SSN_RATIO });
   txt(c, "Atención al asegurado", M + ssnW + 8, top + 9, 6.5, c.reg, GRAY);
   txt(c, SSN_TELEFONO, M + ssnW + 8, top + 22, 10, c.bold, NAVY);
-  const merW = 82;
   c.page.drawImage(c.mer, { x: W - M - merW, y: c.H - top - merW * MERIDIONAL_RATIO - 2, width: merW, height: merW * MERIDIONAL_RATIO });
   centro(c, "PRODUCTOR DE SEGUROS", W / 2 + 8, top + 8, 6.3, c.bold, GRAY);
   centro(c, `${PRODUCTOR.nombre} · MAT. ${PRODUCTOR.matricula}`, W / 2 + 8, top + 19, 7.6, c.bold, INK);
 
-  // Pie (fin de la media hoja)
-  rect(c, 0, 421 - 18, W, 18, NAVY);
-  rect(c, 0, 421 - 20, W, 2, GOLD);
-  centro(
-    c,
-    `GRUPO BERTONA · ${DIRECCION_COMPLETA} · Cobranza ${TELEFONO_COBRANZA_VISIBLE} · Consultas y siniestros ${EMPRESA.telefonoVisible.replace("+54 ", "")} · bertonaseguros.com`,
-    W / 2,
-    421 - 6.5,
-    6.4,
-    c.bold,
-    WHITE
-  );
-
-  // Línea de corte a la mitad de la hoja
-  for (let x = 0; x < W; x += 10) c.page.drawLine({ start: { x, y: c.H - 421 }, end: { x: x + 5, y: c.H - 421 }, thickness: 0.5, color: LINE });
+  // Pie (fin del recibo) y, en media hoja, línea de corte a la mitad de la hoja
+  pie();
+  if (!completa) for (let x = 0; x < W; x += 10) c.page.drawLine({ start: { x, y: c.H - 421 }, end: { x: x + 5, y: c.H - 421 }, thickness: 0.5, color: LINE });
 
   return c.doc.save();
 }
@@ -241,6 +258,7 @@ export async function generarReciboPdf(d: ReciboData): Promise<Uint8Array> {
 // ───────── Constancia de cobertura (Grupo Bertona) ─────────
 export type ConstanciaData = {
   emitida: string; // fecha de emisión ISO
+  vence?: string; // vencimiento de la constancia ISO (sobre esta fecha se avisa)
   numero?: string;
   asegurado: string;
   dni?: string;
@@ -282,10 +300,12 @@ export async function generarConstanciaPdf(d: ConstanciaData): Promise<Uint8Arra
   rect(c, M, top, W - 2 * M, 30, SOFT);
   txt(c, "Fecha de emisión", M + 10, top + 12, 7, c.bold, GRAY);
   txt(c, fecha(d.emitida), M + 10, top + 25, 10.5, c.bold, INK);
-  txt(c, "Vigencia desde", 250, top + 12, 7, c.bold, GRAY);
-  txt(c, d.desde ? fecha(d.desde) : "-", 250, top + 25, 10.5, c.bold, INK);
-  txt(c, "Vigencia hasta", 410, top + 12, 7, c.bold, GRAY);
-  txt(c, d.hasta ? fecha(d.hasta) : "-", 410, top + 25, 10.5, c.bold, INK);
+  txt(c, "Vencimiento", 170, top + 12, 7, c.bold, GRAY);
+  txt(c, d.vence ? fecha(d.vence) : "-", 170, top + 25, 10.5, c.bold, INK);
+  txt(c, "Vigencia desde", 300, top + 12, 7, c.bold, GRAY);
+  txt(c, d.desde ? fecha(d.desde) : "-", 300, top + 25, 10.5, c.bold, INK);
+  txt(c, "Vigencia hasta", 430, top + 12, 7, c.bold, GRAY);
+  txt(c, d.hasta ? fecha(d.hasta) : "-", 430, top + 25, 10.5, c.bold, INK);
   top += 42;
 
   const seccion = (t: string) => {

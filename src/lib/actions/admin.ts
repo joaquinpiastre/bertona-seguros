@@ -149,3 +149,7 @@ export async function eliminarCertificado(fd: FormData) {
 export async function eliminarPoliza(fd: FormData) {
   await accion("eliminarPoliza", fd);
 }
+
+export async function marcarEscrito(fd: FormData) {
+  await accion("marcarEscrito", fd);
+}

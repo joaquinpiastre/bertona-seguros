@@ -25,6 +25,13 @@ export default async function Configuracion({ searchParams }: { searchParams: Pr
           </div>
         </Card>
 
+        <Card title="Aviso para refacturar">
+          <div className="max-w-sm">
+            <Field label="Avisar cuántos días después de la última cuota" name="dias_refacturacion" type="number" min="0" max="120" defaultValue={cfg.dias_refacturacion || "15"} required
+              hint="Cuando terminan las cuotas de una póliza y pasan estos días sin cargar cuotas nuevas, aparece un aviso de que ese seguro ya venció, para refacturarlo o renovarlo." />
+          </div>
+        </Card>
+
         <Card title="Auxilio mecánico (solo llamadas; vino cargado con la información de Meridional)">
           <div className="grid gap-4">
             <Field label="Teléfono 0800" name="auxilio_telefono" defaultValue={cfg.auxilio_telefono} placeholder="Ej: 0800-333-3244" className="max-w-sm" />

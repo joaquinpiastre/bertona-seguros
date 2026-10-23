@@ -249,6 +249,8 @@ CREATE TABLE IF NOT EXISTS certificados (
   creado TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_certificados_poliza ON certificados(poliza_id);
+-- Cobranza: cuándo se le escribió al cliente por esta cuota (cada cuota nueva arranca sin marcar).
+ALTER TABLE cuotas ADD COLUMN IF NOT EXISTS escrito_en TIMESTAMPTZ;
 `;
 
 async function inicializar(r: Runner) {

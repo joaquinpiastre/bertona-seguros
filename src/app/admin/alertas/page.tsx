@@ -14,6 +14,7 @@ const TIPOS: Record<string, { label: string; tono: "rojo" | "ambar" | "azul" | "
   pago_final: { label: "Póliza pagada", tono: "verde" },
   poliza_vencida: { label: "Póliza vencida", tono: "rojo" },
   certificado: { label: "Certificado", tono: "ambar" },
+  refacturacion: { label: "Refacturar", tono: "rojo" },
 };
 
 const nombre1 = (n: string) => n.split(" ")[0].charAt(0) + n.split(" ")[0].slice(1).toLowerCase();
@@ -24,6 +25,10 @@ function whatsapp(a: Row): string {
   switch (a.tipo) {
     case "poliza_vencida":
       return `${hola}\nTu ${pol} figura vencida desde el ${fecha(a.hasta)}.\nQueremos ayudarte a renovarla para que no quedes sin cobertura. ¿Te enviamos la nueva propuesta?\nContactanos al ${EMPRESA.telefonoVisible} o respondé este mensaje.`;
+    case "refacturacion":
+      return `${hola}
+Terminaron las cuotas de tu ${pol}. Queremos ayudarte a renovar el seguro para que no quedes sin cobertura. ¿Te enviamos la nueva propuesta?
+Contactanos al ${EMPRESA.telefonoVisible} o respondé este mensaje.`;
     case "baja":
       return `${hola}\nRecibimos tu pedido de anular la ${pol}. Queríamos comunicarnos para confirmarlo y ver si podemos ayudarte con algo antes. ¿Cuándo podemos hablar?`;
     case "tramite":

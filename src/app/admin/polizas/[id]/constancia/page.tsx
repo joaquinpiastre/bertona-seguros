@@ -7,7 +7,7 @@ type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: str
 export default async function Constancia({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const { p, advertencias, productor, hoy } = await dato<{ p: Row; advertencias: string; productor: string; hoy: string }>("constanciaDatos", { id });
+  const { p, advertencias, productor, hoy, venceSugerido } = await dato<{ p: Row; advertencias: string; productor: string; hoy: string; venceSugerido: string }>("constanciaDatos", { id });
   const boton = "inline-flex min-h-12 items-center justify-center gap-2 px-5 py-3 text-base font-semibold transition";
 
   return (
@@ -35,6 +35,7 @@ export default async function Constancia({ params, searchParams }: Props) {
             <Field label="Vigencia desde" name="desde" type="date" defaultValue={p.desde ?? ""} />
             <Field label="Vigencia hasta" name="hasta" type="date" defaultValue={p.hasta ?? ""} />
             <Field label="Fecha de emisión" name="emitida" type="date" defaultValue={hoy} />
+            <Field label="Vencimiento de la constancia" name="vence" type="date" defaultValue={venceSugerido} hint="Se registra al guardar y el sistema avisa antes de que venza." />
             <Field label="Suma asegurada" name="suma" defaultValue={p.suma ? p.suma.toLocaleString("es-AR", { style: "currency", currency: "ARS" }) : ""} />
             <Field label="N° de constancia (opcional)" name="numero" />
             <Field label="Productor asesor" name="productor" defaultValue={productor} />

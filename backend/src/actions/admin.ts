@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { requireAdmin } from "../auth";
 import { leerArchivo, type Archivo } from "../archivos";
 import { q, q1 } from "../db";
-import { claveNueva, fijarClave, guardarDoc, recalcularCuota, registrarPagosCuotas, soloDigitos, sincronizarUsuarioSocio } from "../core";
+import { claveNueva, enLista, fijarClave, guardarDoc, recalcularCuota, registrarPagosCuotas, soloDigitos, sincronizarUsuarioSocio } from "../core";
 import { EMAIL_RE, Redirigir, ir, num, txt, txtONull } from "../flash";
 import { ACTUALIZACION, COBROS, ESTADOS_POLIZA, PERIODICIDAD, TIPOS_DOC, esFecha, hoy, sumarMeses } from "../format";
 
@@ -285,38 +285,21 @@ export async function anularCuota(fd: FormData) {
 }
 
 // ───────── Certificados por período (pólizas con actualización periódica, ej. cuatrimestral) ─────────
-const mesesEntre = (a: string, b: string) => (Number(b.slice(0, 4)) - Number(a.slice(0, 4))) * 12 + Number(b.slice(5, 7)) - Number(a.slice(5, 7));
-
-/** Carga el certificado de un nuevo período y, si se pide, genera las cuotas (mes a mes) de ese período con el importe actualizado. */
+/** Carga el certificado de un nuevo período (con su archivo, si se sube) y resuelve el aviso de vencimiento. */
 export async function cargarCertificado(fd: FormData) {
   const yo = await requireAdmin();
   const pid = Number(txt(fd, "poliza_id"));
   const volver = `/admin/polizas/${pid}`;
   const desde = txt(fd, "desde");
   const hasta = txt(fd, "hasta");
-  const p = await q1("SELECT cliente_id, cobro, periodicidad FROM polizas WHERE id = $1", [pid]);
+  const p = await q1("SELECT cliente_id FROM polizas WHERE id = $1", [pid]);
   if (!p) ir("/admin/polizas", "error", "Póliza inexistente.");
   if (!esFecha(desde) || !esFecha(hasta) || hasta <= desde) ir(volver, "error", "Indicá el período del certificado: la fecha «hasta» tiene que ser posterior a «desde».");
-  const generar = fd.get("generar_cuotas") === "on" && p!.cobro === "oficina";
-  const importe = num(fd, "importe_cuota");
-  if (generar && !(importe >= 0)) ir(volver, "error", "Indicá el importe de la cuota para generar las cuotas del período.");
   const a = await archivoSeguro(fd, "archivo", volver);
   const docId = a ? await guardarDoc(a, { cliente_id: p!.cliente_id, poliza_id: pid, tipo: "certificado", subido_por: yo.id }) : null;
   await q("INSERT INTO certificados (poliza_id, desde, hasta, documento_id, nota) VALUES ($1,$2,$3,$4,$5)", [pid, desde, hasta, docId, txtONull(fd, "nota")]);
   await q("UPDATE alertas SET estado = 'resuelta', resuelta_en = now() WHERE tipo = 'certificado' AND poliza_id = $1 AND estado = 'pendiente'", [pid]);
-
-  let nuevas = 0;
-  if (generar) {
-    const paso = PERIODICIDAD[p!.periodicidad]?.meses ?? 1;
-    nuevas = Math.max(1, Math.floor(mesesEntre(desde, hasta) / paso));
-    const ult = await q1("SELECT numero, vencimiento::text AS venc FROM cuotas WHERE poliza_id = $1 ORDER BY numero DESC LIMIT 1", [pid]);
-    const primera = ult && ult.venc >= desde ? sumarMeses(ult.venc, paso) : desde;
-    for (let i = 0; i < nuevas; i++) {
-      await q("INSERT INTO cuotas (poliza_id, numero, vencimiento, importe) VALUES ($1,$2,$3,$4)", [pid, (ult?.numero ?? 0) + i + 1, sumarMeses(primera, i * paso), importe]);
-    }
-    await q("UPDATE polizas SET importe_cuota = $2, cuotas_cant = (SELECT COUNT(*) FROM cuotas WHERE poliza_id = $1) WHERE id = $1", [pid, importe]);
-  }
-  ir(volver, "ok", `Certificado cargado${nuevas ? ` y ${nuevas} cuota${nuevas > 1 ? "s" : ""} generada${nuevas > 1 ? "s" : ""}` : ""}.`);
+  ir(volver, "ok", "Certificado cargado.");
 }
 
 export async function eliminarCertificado(fd: FormData) {
@@ -328,6 +311,18 @@ export async function eliminarCertificado(fd: FormData) {
   await q("DELETE FROM certificados WHERE id = $1", [id]);
   if (c!.documento_id) await q("DELETE FROM documentos WHERE id = $1", [c!.documento_id]);
   ir(`/admin/polizas/${pid}`, "ok", "Certificado eliminado.");
+}
+
+// ───────── Cobranza: marcar a quién ya se le escribió ─────────
+/** Marca (o desmarca) como "escrito" las cuotas pendientes de un cliente. Cada cuota nueva que se acerca o vence arranca sin marcar. */
+export async function marcarEscrito(fd: FormData) {
+  await requireAdmin();
+  const ids = fd.getAll("cuota_id").map((v) => Number(v)).filter((n) => n > 0);
+  const volverPedido = txt(fd, "volver");
+  const volver = volverPedido.startsWith("/admin/vencimientos") ? volverPedido : "/admin/vencimientos";
+  if (!ids.length) ir(volver, "error", "No hay cuotas para marcar.");
+  await q(`UPDATE cuotas SET escrito_en = ${txt(fd, "escrito") === "1" ? "now()" : "NULL"} WHERE id IN (${enLista(ids)}) AND estado = 'pendiente'`);
+  throw new Redirigir(volver);
 }
 
 // ───────── Documentos ─────────

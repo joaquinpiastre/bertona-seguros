@@ -10,7 +10,7 @@ import { NoEncontrado } from "./flash";
 import { PRODUCTOR } from "./empresa";
 import { ADVERTENCIAS_CONSTANCIA } from "./pdf";
 import { datosReciboGrupo } from "./queries";
-import { hoy, sumarDias } from "./format";
+import { hoy, sumarDias, sumarMeses } from "./format";
 
 type SP = URLSearchParams;
 const idDe = (sp: SP) => Number(sp.get("id")) || 0;
@@ -94,6 +94,9 @@ export const DATOS2: Record<string, (sp: SP) => Promise<unknown>> = {
 
     const params: unknown[] = [h];
     let where = "c.estado = 'pendiente' AND cl.activo AND p.estado <> 'anulada'";
+    const escrito = sp.get("escrito");
+    if (escrito === "no") where += " AND c.escrito_en IS NULL";
+    else if (escrito === "si") where += " AND c.escrito_en IS NOT NULL";
     if (vista === "vencidas") where += " AND c.vencimiento < $1::date";
     else if (vista === "proximas") {
       params.push(sumarDias(h, 15));
@@ -105,6 +108,7 @@ export const DATOS2: Record<string, (sp: SP) => Promise<unknown>> = {
     }
     const filas = await q(
       `SELECT c.id, c.numero, c.vencimiento::text AS venc, c.importe::float8 AS importe, ($1::date - c.vencimiento)::int AS atraso,
+              (c.escrito_en AT TIME ZONE 'America/Argentina/Buenos_Aires')::date::text AS escrito,
               p.id AS poliza_id, p.numero AS poliza, p.cuotas_cant, p.compania, p.dominio, p.riesgo,
               cl.id AS cliente_id, cl.nombre AS cliente, cl.telefono, cl.es_agencia,
               (SELECT COALESCE(SUM(x.importe),0)::float8 FROM cuotas x JOIN polizas px ON px.id = x.poliza_id
@@ -115,7 +119,7 @@ export const DATOS2: Record<string, (sp: SP) => Promise<unknown>> = {
        WHERE ${where} ORDER BY c.vencimiento, cl.nombre LIMIT 400`,
       params
     );
-    return { vista, filas };
+    return { vista, filas, transferir: (await getConfigs(["mp_instrucciones"])).mp_instrucciones };
   },
 
   async alertas() {
@@ -222,7 +226,8 @@ export const DATOS2: Record<string, (sp: SP) => Promise<unknown>> = {
       [idDe(sp)]
     );
     if (!p) throw new NoEncontrado();
-    return { p, advertencias: ADVERTENCIAS_CONSTANCIA, productor: `${PRODUCTOR.matricula} - ${PRODUCTOR.nombre}`, hoy: hoy() };
+    const meses = (await q1("SELECT actualizacion_meses AS m FROM polizas WHERE id = $1", [p.id]))?.m ?? 0;
+    return { p, advertencias: ADVERTENCIAS_CONSTANCIA, productor: `${PRODUCTOR.matricula} - ${PRODUCTOR.nombre}`, hoy: hoy(), venceSugerido: meses > 0 ? sumarMeses(hoy(), meses) : "" };
   },
 
   async reciboEnlace(sp) {
@@ -243,7 +248,7 @@ export const DATOS2: Record<string, (sp: SP) => Promise<unknown>> = {
 
   async configuracion() {
     await requireAdmin();
-    return { cfg: await getConfigs(["dias_gracia", "dias_aviso_certificado", "auxilio_telefono", "auxilio_texto", "auxilio_planes", "mp_instrucciones"]) };
+    return { cfg: await getConfigs(["dias_gracia", "dias_aviso_certificado", "dias_refacturacion", "auxilio_telefono", "auxilio_texto", "auxilio_planes", "mp_instrucciones"]) };
   },
 
   // ───────── Portal del cliente ─────────

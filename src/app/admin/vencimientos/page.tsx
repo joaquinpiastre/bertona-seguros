@@ -1,17 +1,21 @@
 import Link from "next/link";
+import { EnviarWhatsApp, EscritoCheck } from "@/components/panel/Cliente";
 import { Badge, Card, Flash, LinkBtn, PageHead, Tabla, Td, Th, btnGhost, btnPrimary, inputCls } from "@/components/panel/ui";
+import { marcarEscrito } from "@/lib/actions/admin";
 import { COBRANZA, DIRECCION_COMPLETA, PORTAL_URL } from "@/config/empresa";
 import { dato, type Row } from "@/lib/api";
 import { ACTUALIZACION, fecha, money, waCliente } from "@/lib/format";
 
-type SP = Promise<{ ok?: string; error?: string; vista?: string; q?: string }>;
+type SP = Promise<{ ok?: string; error?: string; vista?: string; q?: string; escrito?: string }>;
 
 const primerNombre = (n: string) => n.split(" ")[0].charAt(0) + n.split(" ")[0].slice(1).toLowerCase();
 const detalleBien = (f: Row) => [f.riesgo, f.dominio].filter(Boolean).join(" · ");
-const pagar = `Podés abonar en efectivo en nuestra oficina (${DIRECCION_COMPLETA}) o por transferencia, e informar el pago desde "Pagar" en tu cuenta (${PORTAL_URL}, con tu DNI y contraseña). Podés pagar varias cuotas juntas con un solo recibo.`;
+const pagar = (transferir?: string) =>
+  `Podés abonar en efectivo en nuestra oficina (${DIRECCION_COMPLETA}) o por transferencia, e informar el pago desde "Pagar" en tu cuenta (${PORTAL_URL}, con tu DNI y contraseña). Podés pagar varias cuotas juntas con un solo recibo.` +
+  (transferir?.trim() ? `\n\nDatos para transferir:\n${transferir.trim()}` : "");
 
 /** Un solo mensaje por cliente con todo lo que debe: total, vehículos, pólizas, cuotas y vencimientos. */
-function mensajeCliente(filas: Row[]) {
+function mensajeCliente(filas: Row[], transferir?: string) {
   const nombre = primerNombre(filas[0].cliente);
   const vencidas = filas.filter((f) => f.atraso > 0);
   const proximas = filas.filter((f) => f.atraso <= 0);
@@ -30,7 +34,7 @@ function mensajeCliente(filas: Row[]) {
     partes.push(vencidas.length ? "Y estas cuotas están por vencer:" : `Te recordamos que tenés ${proximas.length === 1 ? "una cuota por vencer" : `${proximas.length} cuotas por vencer`}:`, ...proximas.map(linea));
     partes.push(`Total a vencer: ${money(proximas.reduce((s, f) => s + f.importe, 0))}`);
   }
-  partes.push(pagar, `Consultas de cobranza: ${COBRANZA.visible}.`);
+  partes.push(pagar(transferir), `Consultas de cobranza: ${COBRANZA.visible}.`);
   return partes.join("\n");
 }
 
@@ -50,7 +54,7 @@ function mensajePoliza(f: Row) {
 
 export default async function Vencimientos({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
-  const d = await dato<{ vista: string; filas?: Row[]; polizas?: Row[]; certificados?: Row[]; dias?: number }>("vencimientos", { vista: sp.vista, q: sp.q });
+  const d = await dato<{ vista: string; filas?: Row[]; polizas?: Row[]; certificados?: Row[]; dias?: number; transferir?: string }>("vencimientos", { vista: sp.vista, q: sp.q, escrito: sp.escrito });
   const vista = d.vista;
   const filas = d.filas ?? [];
   const polizas = d.polizas ?? [];
@@ -64,6 +68,12 @@ export default async function Vencimientos({ searchParams }: { searchParams: SP 
     if (!g) clientes.push((g = { id: f.cliente_id, filas: [] }));
     g.filas.push(f);
   }
+
+  const filtroEscrito = sp.escrito === "no" || sp.escrito === "si" ? sp.escrito : "";
+  const volverA = `/admin/vencimientos?vista=${vista}${sp.q ? `&q=${encodeURIComponent(sp.q)}` : ""}${filtroEscrito ? `&escrito=${filtroEscrito}` : ""}`;
+  const chip = (v: string, l: string) => (
+    <Link key={v} href={`/admin/vencimientos?vista=${vista}${sp.q ? `&q=${encodeURIComponent(sp.q)}` : ""}${v ? `&escrito=${v}` : ""}`} className={`${filtroEscrito === v ? btnPrimary : btnGhost} !px-3 !py-1.5 !text-xs`}>{l}</Link>
+  );
 
   const tab = (v: string, l: string) => (
     <Link key={v} href={`/admin/vencimientos?vista=${v}`} className={vista === v ? btnPrimary : btnGhost}>{l}</Link>
@@ -83,6 +93,7 @@ export default async function Vencimientos({ searchParams }: { searchParams: SP 
         </div>
         <form className="flex gap-2">
           <input type="hidden" name="vista" value={vista} />
+          {filtroEscrito && <input type="hidden" name="escrito" value={filtroEscrito} />}
           <input name="q" defaultValue={sp.q} placeholder="Cliente, póliza o dominio" className={`${inputCls} !mt-0 w-64`} aria-label="Buscar" />
           <button className={btnGhost}>Buscar</button>
         </form>
@@ -153,11 +164,18 @@ export default async function Vencimientos({ searchParams }: { searchParams: SP 
         </Card>
       ) : (
         <>
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-semibold text-brand-900">Cobranza por WhatsApp:</span>
+            {chip("", "Todos")}{chip("no", "Sin escribir")}{chip("si", "Ya escritos")}
+          </div>
           {clientes.length === 0 && <Card><p className="text-sm text-ink-soft">No hay cuotas para mostrar con este filtro.</p></Card>}
           <div className="space-y-4">
             {clientes.map((g) => {
               const f0 = g.filas[0];
-              const wa = waCliente(f0.telefono, mensajeCliente(g.filas));
+              const wa = waCliente(f0.telefono, mensajeCliente(g.filas, d.transferir));
+              const escritas = g.filas.filter((f) => f.escrito);
+              const todasEscritas = escritas.length === g.filas.length;
+              const ultimaEscrita = escritas.map((f) => f.escrito as string).sort().at(-1);
               const vencidas = g.filas.filter((f) => f.atraso > 0);
               const sumaVista = g.filas.reduce((s, f) => s + f.importe, 0);
               return (
@@ -166,6 +184,7 @@ export default async function Vencimientos({ searchParams }: { searchParams: SP 
                     <div>
                       <Link href={`/admin/clientes/${g.id}`} className="font-display text-xl font-semibold text-brand-900 hover:underline">{f0.cliente}</Link>
                       {f0.es_agencia && <> <Badge tono="azul">Agencia</Badge></>}
+                      {todasEscritas && <> <Badge tono="verde">Escrito</Badge></>}
                       <p className="text-sm text-ink-soft">{f0.telefono || "Sin teléfono"} · {g.filas.length} cuota{g.filas.length === 1 ? "" : "s"} en esta vista</p>
                     </div>
                     <div className="text-right">
@@ -201,7 +220,14 @@ export default async function Vencimientos({ searchParams }: { searchParams: SP 
                     ))}
                   </ul>
                   <div className="flex flex-wrap items-center gap-3 border-t border-line bg-soft px-4 py-3 sm:px-5">
-                    {wa ? <a href={wa} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center bg-[#1fa855] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#188a45]">Enviar WhatsApp con el total y el detalle</a> : <span className="text-sm text-ink-soft">Sin teléfono para enviar WhatsApp</span>}
+                    {wa ? <EnviarWhatsApp action={marcarEscrito} ids={g.filas.map((f) => f.id)} url={wa} completo={todasEscritas} enviadoEl={ultimaEscrita ? fecha(ultimaEscrita) : undefined} volver={volverA} /> : <span className="text-sm text-ink-soft">Sin teléfono para enviar WhatsApp</span>}
+                    <EscritoCheck
+                      action={marcarEscrito}
+                      ids={g.filas.map((f) => f.id)}
+                      marcado={todasEscritas}
+                      volver={volverA}
+                      texto={!todasEscritas && escritas.length ? `${escritas.length} de ${g.filas.length} cuotas ya escritas` : undefined}
+                    />
                     {g.filas.length > 1 && <LinkBtn sm href={`/admin/pagos/nuevo?cliente=${g.id}&todas=${vencidas.length ? "vencidas" : "1"}`}>Cobrar varias juntas</LinkBtn>}
                   </div>
                 </section>
@@ -211,7 +237,7 @@ export default async function Vencimientos({ searchParams }: { searchParams: SP 
           <p className="mt-3 text-right text-sm text-ink-soft">{clientes.length} cliente{clientes.length === 1 ? "" : "s"} · {filas.length} cuota{filas.length === 1 ? "" : "s"} · Total <strong className="text-brand-900">{money(total)}</strong></p>
         </>
       )}
-      <p className="mt-4 text-xs text-ink-soft">El botón Enviar WhatsApp abre la conversación con un solo mensaje por cliente: el total que debe, cada vehículo o póliza, cuota, fecha y días de atraso. Solo hay que tocar enviar.</p>
+      <p className="mt-4 text-xs text-ink-soft">El botón Enviar WhatsApp abre la conversación con un solo mensaje por cliente: el total que debe, cada vehículo o póliza, cuota, fecha, días de atraso y los datos para transferir (se cargan en Configuración). Al tocar el botón el cliente queda marcado como enviado (con la fecha) y, si querés mandarle otro, el sistema te pide confirmar para no repetir mensajes. La casilla «Escrito» sirve para marcarlo o desmarcarlo a mano (por ejemplo si le avisaste por teléfono). Cuando se acerque o venza la próxima cuota, vuelve a aparecer sin marcar.</p>
     </>
   );
 }

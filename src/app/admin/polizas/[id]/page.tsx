@@ -2,6 +2,7 @@ import Link from "next/link";
 import { dato, type Row } from "@/lib/api";
 import { notFound } from "next/navigation";
 import { SubmitButton } from "@/components/panel/Cliente";
+import { CamposCertificado } from "@/components/panel/CamposCertificado";
 import { Badge, Card, Field, Flash, LinkBtn, PageHead, SelectField, Tabla, Td, TextArea, Th, inputCls } from "@/components/panel/ui";
 import { actualizarCuota, actualizarPoliza, agregarCuota, anularCuota, anularPoliza, cargarCertificado, eliminarCertificado, eliminarDocumento, eliminarPoliza, reactivarPoliza, subirDocumento } from "@/lib/actions/admin";
 import { ACTUALIZACION, COBROS, ESTADOS_POLIZA, PERIODICIDAD, RAMOS_LISTA, TIPOS_DOC, fecha, hoy, money, sumarMeses } from "@/lib/format";
@@ -113,19 +114,9 @@ export default async function DetallePoliza({ params, searchParams }: Props) {
             <input type="hidden" name="poliza_id" value={pid} />
             <p className="mb-3 text-sm font-semibold text-brand-900">Cargar el certificado de un nuevo período</p>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Field label="Desde" name="desde" type="date" defaultValue={proxDesde} required />
-              <Field label="Hasta (vencimiento)" name="hasta" type="date" defaultValue={proxHasta} required />
-              <Field label="Archivo (PDF o imagen, máx. 4 MB)" name="archivo" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="lg:col-span-2" />
+              <CamposCertificado desde={proxDesde} hasta={proxHasta} poliza={p.numero} dominio={p.dominio} />
               <Field label="Nota (opcional)" name="nota" className="sm:col-span-2 lg:col-span-4" />
             </div>
-            {!porTarjeta && (
-              <div className="mt-4 flex flex-wrap items-end gap-4 bg-soft p-4">
-                <label className="flex items-center gap-2 text-sm font-semibold text-brand-900">
-                  <input type="checkbox" name="generar_cuotas" className="h-4 w-4" /> Generar también las cuotas de este período (una por cada {(PERIODICIDAD[p.periodicidad]?.meses ?? 1) === 1 ? "mes" : `${PERIODICIDAD[p.periodicidad]?.meses} meses`})
-                </label>
-                <Field label="Importe de cada cuota (ARS)" name="importe_cuota" defaultValue={String(p.imp ?? "")} className="w-56" />
-              </div>
-            )}
             <div className="mt-4"><SubmitButton variant="gold" pendiente="Guardando…">Guardar certificado</SubmitButton></div>
             <p className="mt-2 text-xs text-ink-soft">Al cargarlo se resuelve el aviso de vencimiento. El cliente ve siempre el último certificado cargado. Se avisa con {diasAviso} días de anticipación (se cambia en Configuración).</p>
           </form>

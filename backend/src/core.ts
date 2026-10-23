@@ -28,6 +28,12 @@ export async function getConfigs(claves: string[]): Promise<Record<string, strin
   return out;
 }
 
+/** Cuántos días después de la última cuota se avisa que hay que refacturar / renovar el seguro. */
+export async function diasRefacturacion(): Promise<number> {
+  const n = Number(await getConfig("dias_refacturacion", "15"));
+  return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : 15;
+}
+
 /** Con cuántos días de anticipación se avisa que un certificado está por vencer. */
 export async function diasAvisoCertificado(): Promise<number> {
   const n = Number(await getConfig("dias_aviso_certificado", "15"));
@@ -65,7 +71,7 @@ export async function recalcularCuota(id: number | null) {
 }
 
 // ───────── Alertas para la empresa ─────────
-export type TipoAlerta = "baja" | "tramite" | "siniestro" | "pago_informado" | "pago_final" | "poliza_vencida" | "certificado";
+export type TipoAlerta = "baja" | "tramite" | "siniestro" | "pago_informado" | "pago_final" | "poliza_vencida" | "certificado" | "refacturacion";
 
 export async function crearAlerta(a: {
   tipo: TipoAlerta;
@@ -132,6 +138,47 @@ export async function generarAlertasVencidas() {
     });
   }
   await generarAlertasCertificados();
+  await generarAlertasRefacturacion();
+}
+
+/**
+ * Avisa de las pólizas cuyas cuotas terminaron hace X días (por defecto 15) para refacturarlas o renovarlas.
+ * Solo mira las que terminaron en los últimos ~90 días, para no llenar los avisos con pólizas viejas. Si después se cargan
+ * cuotas nuevas (refacturación), el aviso pendiente se resuelve solo.
+ */
+export async function generarAlertasRefacturacion() {
+  const h = hoy();
+  const dias = await diasRefacturacion();
+  const corte = sumarDias(h, -dias); // la última cuota venció en esta fecha o antes
+  const piso = sumarDias(h, -(dias + 75));
+  await q(
+    `UPDATE alertas a SET estado = 'resuelta', resuelta_en = now()
+     WHERE a.tipo = 'refacturacion' AND a.estado = 'pendiente'
+       AND EXISTS (SELECT 1 FROM cuotas c WHERE c.poliza_id = a.poliza_id AND c.estado <> 'anulada' AND c.vencimiento > $1::date)`,
+    [corte]
+  );
+  const filas = await q(
+    `SELECT p.id, p.cliente_id, p.numero, p.compania, cl.nombre, u.ult::text AS ultima,
+            (SELECT COUNT(*)::int FROM cuotas WHERE poliza_id = p.id AND estado = 'pendiente') AS pendientes
+     FROM polizas p
+     JOIN clientes cl ON cl.id = p.cliente_id
+     JOIN LATERAL (SELECT MAX(vencimiento) AS ult FROM cuotas WHERE poliza_id = p.id AND estado <> 'anulada') u ON TRUE
+     WHERE p.estado IN ('vigente','en_tramite') AND cl.activo AND u.ult IS NOT NULL AND u.ult <= $1::date AND u.ult >= $2::date
+     ORDER BY u.ult DESC LIMIT 200`,
+    [corte, piso]
+  );
+  for (const p of filas) {
+    const dmy = String(p.ultima).split("-").reverse().join("/");
+    await crearAlerta({
+      tipo: "refacturacion",
+      cliente_id: p.cliente_id,
+      poliza_id: p.id,
+      titulo: "Terminaron las cuotas: ese seguro ya venció",
+      detalle: `${p.nombre} · ${p.compania} · póliza ${p.numero}. La última cuota venció el ${dmy}.${p.pendientes ? ` Todavía tiene ${p.pendientes} cuota${p.pendientes > 1 ? "s" : ""} sin pagar.` : ""} Hay que refacturar o renovar el seguro.`,
+      datos: p.ultima,
+      unico: true,
+    });
+  }
 }
 
 /**
