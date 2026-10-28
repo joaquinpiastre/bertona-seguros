@@ -251,6 +251,21 @@ CREATE TABLE IF NOT EXISTS certificados (
 CREATE INDEX IF NOT EXISTS idx_certificados_poliza ON certificados(poliza_id);
 -- Cobranza: cuándo se le escribió al cliente por esta cuota (cada cuota nueva arranca sin marcar).
 ALTER TABLE cuotas ADD COLUMN IF NOT EXISTS escrito_en TIMESTAMPTZ;
+
+-- Cobranza con 1er y 2.º aviso por cuota (reemplaza la marca "escrito"; las cuotas ya marcadas pasan a tener el 1er aviso).
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cuotas' AND column_name = 'aviso1_en') THEN
+    ALTER TABLE cuotas ADD COLUMN aviso1_en TIMESTAMPTZ;
+    ALTER TABLE cuotas ADD COLUMN aviso2_en TIMESTAMPTZ;
+    UPDATE cuotas SET aviso1_en = escrito_en WHERE escrito_en IS NOT NULL;
+  END IF;
+END $$;
+
+-- Se dejó de usar el certificado por período (la tabla certificados queda sin pantalla): se cierran sus avisos pendientes.
+UPDATE alertas SET estado = 'resuelta', resuelta_en = now() WHERE tipo = 'certificado' AND estado = 'pendiente';
+
+-- Contraseña que la oficina le entrega al cliente, cifrada: permite volver a compartirla por WhatsApp. Se borra si el cliente la cambia.
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS clave_cifrada TEXT;
 `;
 
 async function inicializar(r: Runner) {

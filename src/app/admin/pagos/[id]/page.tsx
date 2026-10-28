@@ -5,7 +5,7 @@ import { SubmitButton } from "@/components/panel/Cliente";
 import { EnviarRecibo } from "@/components/panel/EnviarRecibo";
 import { Badge, Card, Dato, Flash, LinkBtn, PageHead, btnGhost, inputCls } from "@/components/panel/ui";
 import { COBRANZA } from "@/config/empresa";
-import { anularPago, eliminarDocumento, subirArchivoPago } from "@/lib/actions/admin";
+import { anularPago, eliminarDocumento, eliminarPago, subirArchivoPago } from "@/lib/actions/admin";
 import { METODOS, TIPOS_DOC, fecha, money, waNumero } from "@/lib/format";
 import { PORTAL_URL } from "@/config/empresa";
 
@@ -29,7 +29,7 @@ export default async function DetallePago({ params, searchParams }: Props) {
         sub={`${p.cliente} · ${fecha(p.fecha_t)}`}
         actions={
           <>
-            <a href={`/api/recibo/${p.id}`} target="_blank" className={btnGhost}>Ver recibo</a>
+            <a href={`/api/recibo/${p.id}`} target="_blank" className={btnGhost}>Ver / imprimir recibo</a>
             <a href={`/api/recibo/${p.id}?sistema=1`} target="_blank" className={btnGhost}>Recibo del sistema</a>
             <LinkBtn href="/admin/pagos">Volver</LinkBtn>
           </>
@@ -57,7 +57,10 @@ export default async function DetallePago({ params, searchParams }: Props) {
                       {l.poliza_id ? <Link href={`/admin/polizas/${l.poliza_id}`} className="font-semibold text-brand-800 hover:underline">{l.compania} · Póliza {l.poliza}</Link> : "A cuenta"}
                       <span className="block text-xs text-ink-soft">{[l.riesgo, l.dominio].filter(Boolean).join(" · ") || "—"}{l.cuota_n ? ` · Cuota ${l.cuota_n}/${l.cuotas_cant} · vence ${fecha(l.vto)}` : ""}</span>
                     </span>
-                    <strong>{money(l.importe)}</strong>
+                    <span className="flex items-center gap-3">
+                      {lineas.length > 1 && !anulado && <a href={`/api/recibo/${l.id}?cuota=1`} target="_blank" className="text-xs font-semibold text-brand-700 hover:underline">Imprimir solo esta cuota</a>}
+                      <strong>{money(l.importe)}</strong>
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -79,6 +82,18 @@ export default async function DetallePago({ params, searchParams }: Props) {
           </Card>
         )}
       </div>
+
+      <Card title="Eliminar el cobro" className="mt-6">
+        <p className="mb-3 text-sm text-ink-soft">
+          Si registraste este cobro por error, podés eliminarlo: se borra el recibo N° {nro}{lineas.length > 1 ? ` (con sus ${lineas.length} cuotas)` : ""} y {lineas.length > 1 ? "las cuotas vuelven" : "la cuota vuelve"} a quedar pendiente{lineas.length > 1 ? "s" : ""}.
+          No queda registro de que existió. Si preferís dejar constancia, usá «Anular pago».
+        </p>
+        <form action={eliminarPago}>
+          <input type="hidden" name="id" value={p.id} />
+          <input type="hidden" name="volver" value="/admin/pagos" />
+          <SubmitButton variant="danger" confirmar={`¿Eliminar el cobro del recibo N° ${nro} por ${money(total)}? ${lineas.length > 1 ? "Las cuotas vuelven" : "La cuota vuelve"} a quedar pendiente y el recibo deja de existir. No se puede deshacer.`} pendiente="Eliminando…">Eliminar cobro</SubmitButton>
+        </form>
+      </Card>
 
       <Card title="Archivos del pago" className="mt-6">
         {docs.length === 0 ? <p className="text-sm text-ink-soft">Sin archivos adjuntos. Se usa el recibo generado por el sistema.</p> : (

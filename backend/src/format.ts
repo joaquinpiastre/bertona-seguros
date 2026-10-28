@@ -55,15 +55,6 @@ export const COBROS: Record<string, string> = {
   debito: "Tarjeta de débito (lo cobra la compañía)",
 };
 
-/** Cada cuántos meses se actualiza la póliza y hay que renovar el certificado (0 = no se actualiza). */
-export const ACTUALIZACION: Record<string, string> = {
-  "0": "Sin actualización",
-  "3": "Trimestral (cada 3 meses)",
-  "4": "Cuatrimestral (cada 4 meses)",
-  "6": "Semestral (cada 6 meses)",
-  "12": "Anual (cada 12 meses)",
-};
-
 export const ESTADOS_POLIZA: Record<string, string> = {
   vigente: "Vigente",
   en_tramite: "En trámite",

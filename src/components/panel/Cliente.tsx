@@ -189,16 +189,19 @@ export function CobroForm({
   );
 }
 
-/** Casilla "Escrito" de cobranza: al tocarla se guarda sola y queda registrado a quién ya se le escribió. */
-export function EscritoCheck({ action, ids, marcado, texto, volver }: { action: (fd: FormData) => void | Promise<void>; ids: number[]; marcado: boolean; texto?: string; volver: string }) {
+type AccionForm = (fd: FormData) => void | Promise<void>;
+
+/** Casilla de aviso de cobranza ("1er aviso" / "2.º aviso"): al tocarla se guarda sola y queda registrado a quién ya se le avisó. */
+export function AvisoCheck({ action, ids, aviso, marcado, texto, volver }: { action: AccionForm; ids: number[]; aviso: 1 | 2; marcado: boolean; texto?: string; volver: string }) {
   return (
     <form action={action} className="inline-flex flex-wrap items-center gap-2">
       <input type="hidden" name="volver" value={volver} />
-      <input type="hidden" name="escrito" value={marcado ? "0" : "1"} />
+      <input type="hidden" name="aviso" value={aviso} />
+      <input type="hidden" name="valor" value={marcado ? "0" : "1"} />
       {ids.map((id) => <input key={id} type="hidden" name="cuota_id" value={id} />)}
       <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold text-brand-900">
         <input type="checkbox" checked={marcado} onChange={(e) => e.currentTarget.form?.requestSubmit()} className="h-5 w-5 cursor-pointer" />
-        Escrito
+        {aviso === 1 ? "1er aviso" : "2.º aviso"}
       </label>
       {texto && <span className="text-xs text-ink-soft">{texto}</span>}
     </form>
@@ -206,28 +209,28 @@ export function EscritoCheck({ action, ids, marcado, texto, volver }: { action: 
 }
 
 /**
- * Botón de WhatsApp de cobranza: abre la conversación y deja marcado al cliente como "enviado" en el mismo toque.
- * Si ya se le escribió, pide confirmar antes de mandar otro mensaje para no repetirlos.
+ * Botón de WhatsApp de cobranza: abre la conversación y deja marcado el aviso (1.º o 2.º) de esas cuotas en el mismo toque.
+ * Con `confirmar` pide confirmación antes de mandarlo (por ejemplo si ya se envió o si todavía es pronto para el 2.º aviso).
  */
-export function EnviarWhatsApp({ action, ids, url, enviadoEl, completo, volver }: { action: (fd: FormData) => void | Promise<void>; ids: number[]; url: string; enviadoEl?: string; completo: boolean; volver: string }) {
+export function EnviarAviso({ action, ids, url, aviso, etiqueta, confirmar, destacado, volver }: { action: AccionForm; ids: number[]; url: string; aviso: 1 | 2; etiqueta: string; confirmar?: string; destacado: boolean; volver: string }) {
   const form = useRef<HTMLFormElement>(null);
   return (
-    <form ref={form} action={action} className="inline-flex flex-wrap items-center gap-3">
+    <form ref={form} action={action} className="inline-flex">
       <input type="hidden" name="volver" value={volver} />
-      <input type="hidden" name="escrito" value="1" />
+      <input type="hidden" name="aviso" value={aviso} />
+      <input type="hidden" name="valor" value="1" />
       {ids.map((id) => <input key={id} type="hidden" name="cuota_id" value={id} />)}
       <button
         type="button"
         onClick={() => {
-          if (completo && !window.confirm(`Ya le enviaste el mensaje${enviadoEl ? ` el ${enviadoEl}` : ""}. ¿Querés enviarlo otra vez?`)) return;
+          if (confirmar && !window.confirm(confirmar)) return;
           window.open(url, "_blank", "noopener,noreferrer");
           form.current?.requestSubmit();
         }}
-        className={`inline-flex min-h-11 items-center gap-2 px-5 py-2.5 text-sm font-semibold ${completo ? "border border-line bg-white text-brand-800 hover:border-brand-500" : "bg-[#1fa855] text-white hover:bg-[#188a45]"}`}
+        className={`inline-flex min-h-11 items-center gap-2 px-5 py-2.5 text-sm font-semibold ${destacado ? "bg-[#1fa855] text-white hover:bg-[#188a45]" : "border border-line bg-white text-brand-800 hover:border-brand-500"}`}
       >
-        {completo ? "Enviar de nuevo por WhatsApp" : "Enviar WhatsApp con el total y el detalle"}
+        {etiqueta}
       </button>
-      {completo && <span className="text-sm font-semibold text-emerald-700">✓ Enviado{enviadoEl ? ` el ${enviadoEl}` : ""}</span>}
     </form>
   );
 }

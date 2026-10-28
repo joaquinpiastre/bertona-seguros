@@ -21,10 +21,14 @@ export async function documento(id: number): Promise<Response> {
   });
 }
 
-/** Arma el PDF del recibo (todas las cuotas que cubre) a partir de un pago cualquiera del recibo. */
-async function reciboPdf(pagoId: number) {
+/**
+ * Arma el PDF del recibo (todas las cuotas que cubre) a partir de un pago cualquiera del recibo.
+ * Con soloEsta = true imprime únicamente la cuota de ese pago (para entregar un comprobante por cuota).
+ */
+async function reciboPdf(pagoId: number, soloEsta = false) {
   const g = await datosReciboGrupo(pagoId);
   if (!g) return null;
+  if (soloEsta) g.lineas = g.lineas.filter((l) => l.id === pagoId);
   // Próximo vencimiento: la siguiente cuota pendiente; si se pagó la última, el que sigue (mismo día del mes siguiente, según la frecuencia de las cuotas).
   const prox = g.lineas
     .map((l) => l.prox || (l.vto ? sumarMeses(l.vto, PERIODICIDAD[l.periodicidad]?.meses ?? 1) : ""))
@@ -56,8 +60,11 @@ const respuestaRecibo = (r: { pdf: Uint8Array; nro: number }) =>
     headers: { ...HDR, "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="recibo-${String(r.nro).padStart(6, "0")}.pdf"` },
   });
 
-/** Recibo de un pago. Si se cargó un recibo propio se devuelve ese; con sistema=true se fuerza el generado. */
-export async function recibo(id: number, sistema: boolean): Promise<Response> {
+/**
+ * Recibo de un pago. Si se cargó un recibo propio se devuelve ese; con sistema=true se fuerza el generado.
+ * Con soloEsta = true se imprime solo la cuota de ese pago (siempre con el recibo generado por el sistema).
+ */
+export async function recibo(id: number, sistema: boolean, soloEsta = false): Promise<Response> {
   const u = await getUsuario();
   if (!u) return texto("No autorizado", 401);
   const d = await q1("SELECT id, recibo_nro, cliente_id, poliza_id, estado FROM pagos WHERE id = $1", [id]);
@@ -65,7 +72,7 @@ export async function recibo(id: number, sistema: boolean): Promise<Response> {
   if (u.rol !== "admin" && d.cliente_id !== u.cliente_id) return texto("No autorizado", 403);
   if (u.rol !== "admin" && (await bloqueoPoliza(d.poliza_id ?? null))) return texto(TEXTO_BLOQUEO.falta_pago, 403);
 
-  if (!sistema && d.estado === "aplicado") {
+  if (!sistema && !soloEsta && d.estado === "aplicado") {
     const propio = await q1(
       `SELECT nombre, mime, datos FROM documentos WHERE tipo = 'recibo'
          AND pago_id IN (SELECT id FROM pagos WHERE recibo_nro = $1 AND cliente_id = $2) ORDER BY id DESC LIMIT 1`,
@@ -77,7 +84,7 @@ export async function recibo(id: number, sistema: boolean): Promise<Response> {
       });
     }
   }
-  const r = await reciboPdf(id);
+  const r = await reciboPdf(id, soloEsta);
   return r ? respuestaRecibo(r) : texto("No encontrado", 404);
 }
 

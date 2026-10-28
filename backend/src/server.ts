@@ -6,9 +6,7 @@ import { bodyLimit } from "hono/body-limit";
 import * as admin from "./actions/admin";
 import * as gestion from "./actions/gestion";
 import * as portal from "./actions/portal";
-import { MSG_NO_ACTIVADA, contexto, firmarToken, getUsuario, loginBloqueado, loginFallido, loginOk, usuarioDeToken } from "./auth";
-import { leerArchivo } from "./archivos";
-import { leerCertificadoPdf } from "./certificado-pdf";
+import { MSG_NO_ACTIVADA, contexto, firmarToken, loginBloqueado, loginFallido, loginOk, usuarioDeToken } from "./auth";
 import { estadoPolizas, soloDigitos } from "./core";
 import { DATOS } from "./data";
 import { DATOS2 } from "./data2";
@@ -99,19 +97,6 @@ app.post("/actions/:name", bodyLimit({ maxSize: 12 * 1024 * 1024 }), async (c) =
   }
 });
 
-// Lee las fechas (y póliza / patente) de la constancia de cobertura de la compañía para completar el formulario. Solo lee el PDF; no lo guarda.
-app.post("/leer-certificado", bodyLimit({ maxSize: 6 * 1024 * 1024 }), async (c) => {
-  const u = await getUsuario();
-  if (!u || u.rol !== "admin") return c.json({ error: "No autorizado" }, 403);
-  try {
-    const a = await leerArchivo(await c.req.formData(), "archivo");
-    if (!a || a.mime !== "application/pdf") return c.json({ datos: {} });
-    return c.json({ datos: await leerCertificadoPdf(a.datos).catch(() => ({})) });
-  } catch (e) {
-    return c.json({ error: e instanceof Error ? e.message : "No se pudo leer el archivo." }, 400);
-  }
-});
-
 app.get("/data/:name", async (c) => {
   const fn = DATOS2[c.req.param("name")] ?? DATOS[c.req.param("name")];
   if (!fn) return c.json({ error: "Consulta inexistente" }, 404);
@@ -134,7 +119,7 @@ const guard = async (fn: () => Promise<Response>) => {
   }
 };
 app.get("/files/documento/:id", (c) => guard(() => documento(Number(c.req.param("id")))));
-app.get("/files/recibo/:id", (c) => guard(() => recibo(Number(c.req.param("id")), c.req.query("sistema") === "1")));
+app.get("/files/recibo/:id", (c) => guard(() => recibo(Number(c.req.param("id")), c.req.query("sistema") === "1", c.req.query("cuota") === "1")));
 app.get("/files/recibo-publico", (c) => guard(() => reciboPublico(c.req.query("t") ?? "")));
 app.get("/files/constancia", (c) => guard(() => constancia(new URL(c.req.url).searchParams)));
 app.get("/files/export", (c) => guard(() => exportarPagos(new URL(c.req.url).searchParams)));

@@ -4,11 +4,10 @@ import { Redirigir } from "./flash";
 import { estadoPolizas } from "./core";
 import { q1 } from "./db";
 import { EMPRESA } from "./empresa";
+import { authSecret } from "./secreto";
 
 function secret() {
-  const s = process.env.AUTH_SECRET || (process.env.NODE_ENV !== "production" ? "dev-secret-bertona-cambiar" : "");
-  if (!s) throw new Error("Falta AUTH_SECRET");
-  return new TextEncoder().encode(s);
+  return new TextEncoder().encode(authSecret());
 }
 
 export async function firmarToken(uid: number) {

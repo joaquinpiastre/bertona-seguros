@@ -1,3 +1,4 @@
+import { FechasConstancia } from "@/components/panel/FechasConstancia";
 import { Card, Field, Flash, LinkBtn, PageHead, TextArea } from "@/components/panel/ui";
 import { guardarConstancia } from "@/lib/actions/admin";
 import { dato, type Row } from "@/lib/api";
@@ -7,7 +8,7 @@ type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: str
 export default async function Constancia({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const { p, advertencias, productor, hoy, venceSugerido } = await dato<{ p: Row; advertencias: string; productor: string; hoy: string; venceSugerido: string }>("constanciaDatos", { id });
+  const { p, advertencias, productor, hoy } = await dato<{ p: Row; advertencias: string; productor: string; hoy: string }>("constanciaDatos", { id });
   const boton = "inline-flex min-h-12 items-center justify-center gap-2 px-5 py-3 text-base font-semibold transition";
 
   return (
@@ -15,7 +16,7 @@ export default async function Constancia({ params, searchParams }: Props) {
       <PageHead title="Constancia de cobertura" sub={`Póliza ${p.numero} · ${p.compania} · ${p.nombre}`} actions={<LinkBtn href={`/admin/polizas/${id}`}>Volver a la póliza</LinkBtn>} />
       <Flash sp={sp} />
       <div className="mb-6 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        Se completa con los datos de la póliza y <strong>podés editar todo</strong>, incluida la vigencia. Es una constancia de Grupo Bertona: no reemplaza al certificado de la compañía. Cargá solo datos que figuren en la póliza real.
+        Se completa con los datos de la póliza y <strong>podés editar todo</strong>. La fecha y el vencimiento del cartel gris salen de la vigencia. Es una constancia de Grupo Bertona: no reemplaza al certificado de la compañía. Cargá solo datos que figuren en la póliza real.
       </div>
       <form action="/api/constancia" method="get" target="_blank" className="space-y-6">
         <input type="hidden" name="poliza_id" value={id} />
@@ -27,15 +28,14 @@ export default async function Constancia({ params, searchParams }: Props) {
             <Field label="Localidad" name="localidad" defaultValue={p.localidad} />
           </div>
         </Card>
-        <Card title="Póliza y vigencia">
+        <Card title="Fecha y vencimiento (cartel gris)">
+          <FechasConstancia desde={p.desde ?? ""} hasta={p.hasta ?? ""} hoy={hoy} />
+        </Card>
+        <Card title="Póliza">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Compañía aseguradora" name="compania" defaultValue={p.compania} required />
             <Field label="N° de póliza" name="poliza" defaultValue={p.numero} required />
             <Field label="Ramo" name="ramo" defaultValue={p.ramo} />
-            <Field label="Vigencia desde" name="desde" type="date" defaultValue={p.desde ?? ""} />
-            <Field label="Vigencia hasta" name="hasta" type="date" defaultValue={p.hasta ?? ""} />
-            <Field label="Fecha de emisión" name="emitida" type="date" defaultValue={hoy} />
-            <Field label="Vencimiento de la constancia" name="vence" type="date" defaultValue={venceSugerido} hint="Se registra al guardar y el sistema avisa antes de que venza." />
             <Field label="Suma asegurada" name="suma" defaultValue={p.suma ? p.suma.toLocaleString("es-AR", { style: "currency", currency: "ARS" }) : ""} />
             <Field label="N° de constancia (opcional)" name="numero" />
             <Field label="Productor asesor" name="productor" defaultValue={productor} />

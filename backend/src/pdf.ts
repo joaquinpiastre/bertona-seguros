@@ -38,6 +38,8 @@ const WHITE = rgb(1, 1, 1);
 const INK = rgb(0.07, 0.1, 0.17);
 const GRAY = rgb(0.42, 0.46, 0.53);
 const LINE = rgb(0.84, 0.87, 0.91);
+const CARTEL = rgb(0.86, 0.87, 0.89); // cartel gris de la constancia
+const CARTEL_BORDE = rgb(0.38, 0.41, 0.46);
 
 // pdf-lib (fuentes estándar) solo codifica WinAnsi.
 const safe = (t: string) =>
@@ -257,8 +259,8 @@ export async function generarReciboPdf(d: ReciboData): Promise<Uint8Array> {
 
 // ───────── Constancia de cobertura (Grupo Bertona) ─────────
 export type ConstanciaData = {
-  emitida: string; // fecha de emisión ISO
-  vence?: string; // vencimiento de la constancia ISO (sobre esta fecha se avisa)
+  emitida: string; // fecha de la constancia ISO (por defecto, el inicio de la vigencia)
+  vence?: string; // vencimiento de la constancia ISO (por defecto, el fin de la vigencia)
   numero?: string;
   asegurado: string;
   dni?: string;
@@ -296,17 +298,15 @@ export async function generarConstanciaPdf(d: ConstanciaData): Promise<Uint8Arra
   derecha(c, "CONSTANCIA DE COBERTURA", W - M, 40, 15, c.bold, WHITE);
   derecha(c, d.numero ? `N° ${d.numero}` : "Documento informativo", W - M, 58, 9, c.reg, GOLD_L);
 
+  // Cartel gris con la fecha y el vencimiento (el formulario los completa con la vigencia de la póliza).
   let top = 98;
-  rect(c, M, top, W - 2 * M, 30, SOFT);
-  txt(c, "Fecha de emisión", M + 10, top + 12, 7, c.bold, GRAY);
-  txt(c, fecha(d.emitida), M + 10, top + 25, 10.5, c.bold, INK);
-  txt(c, "Vencimiento", 170, top + 12, 7, c.bold, GRAY);
-  txt(c, d.vence ? fecha(d.vence) : "-", 170, top + 25, 10.5, c.bold, INK);
-  txt(c, "Vigencia desde", 300, top + 12, 7, c.bold, GRAY);
-  txt(c, d.desde ? fecha(d.desde) : "-", 300, top + 25, 10.5, c.bold, INK);
-  txt(c, "Vigencia hasta", 430, top + 12, 7, c.bold, GRAY);
-  txt(c, d.hasta ? fecha(d.hasta) : "-", 430, top + 25, 10.5, c.bold, INK);
-  top += 42;
+  rect(c, M, top, W - 2 * M, 42, CARTEL);
+  rect(c, M, top, 5, 42, CARTEL_BORDE);
+  txt(c, "FECHA", M + 18, top + 15, 8, c.bold, CARTEL_BORDE);
+  txt(c, fecha(d.emitida), M + 18, top + 33, 15, c.bold, INK);
+  txt(c, "VENCIMIENTO", W / 2 + 10, top + 15, 8, c.bold, CARTEL_BORDE);
+  txt(c, d.vence ? fecha(d.vence) : "-", W / 2 + 10, top + 33, 15, c.bold, INK);
+  top += 54;
 
   const seccion = (t: string) => {
     rect(c, M, top, W - 2 * M, 17, SKY);
@@ -327,7 +327,8 @@ export async function generarConstanciaPdf(d: ConstanciaData): Promise<Uint8Arra
   seccion("Datos del asegurado");
   filas([["Nombre y apellido", d.asegurado], ["DNI", d.dni], ["Domicilio", d.domicilio], ["Localidad", d.localidad]]);
   seccion("Datos de la póliza");
-  filas([["Compañía aseguradora", d.compania], ["Número de póliza", d.poliza], ["Ramo", d.ramo], ["Suma asegurada", d.suma]]);
+  const vigencia = d.desde || d.hasta ? `${d.desde ? fecha(d.desde) : "-"} al ${d.hasta ? fecha(d.hasta) : "-"}` : "";
+  filas([["Compañía aseguradora", d.compania], ["Número de póliza", d.poliza], ["Ramo", d.ramo], ["Vigencia", vigencia], ["Suma asegurada", d.suma]]);
   if ([d.vehiculo, d.patente, d.uso, d.anio, d.motor, d.chasis].some((v) => v && v.trim())) {
     seccion("Datos del vehículo");
     filas([["Vehículo", d.vehiculo], ["Uso", d.uso], ["Patente", d.patente], ["Año", d.anio], ["Motor N°", d.motor], ["Chasis N°", d.chasis]]);

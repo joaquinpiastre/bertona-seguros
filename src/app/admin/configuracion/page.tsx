@@ -18,10 +18,10 @@ export default async function Configuracion({ searchParams }: { searchParams: Pr
           </div>
         </Card>
 
-        <Card title="Aviso de certificados por vencer">
+        <Card title="Aviso para renovar la póliza">
           <div className="max-w-sm">
-            <Field label="Avisar con cuántos días de anticipación" name="dias_aviso_certificado" type="number" min="0" max="120" defaultValue={cfg.dias_aviso_certificado || "15"} required
-              hint="Para las pólizas que se actualizan cada cierto tiempo (ej. cuatrimestral), se crea un aviso cuando falten estos días para que venza el certificado." />
+            <Field label="Avisar con cuántos días de anticipación" name="dias_aviso_renovacion" type="number" min="0" max="120" defaultValue={cfg.dias_aviso_renovacion || "15"} required
+              hint="Cuando a una póliza vigente le faltan estos días o menos para terminar su vigencia, aparece un aviso para ir renovándola antes de que se corte la cobertura." />
           </div>
         </Card>
 
@@ -29,6 +29,20 @@ export default async function Configuracion({ searchParams }: { searchParams: Pr
           <div className="max-w-sm">
             <Field label="Avisar cuántos días después de la última cuota" name="dias_refacturacion" type="number" min="0" max="120" defaultValue={cfg.dias_refacturacion || "15"} required
               hint="Cuando terminan las cuotas de una póliza y pasan estos días sin cargar cuotas nuevas, aparece un aviso de que ese seguro ya venció, para refacturarlo o renovarlo." />
+          </div>
+        </Card>
+
+        <Card title="Aviso de póliza paga">
+          <div className="max-w-sm">
+            <Field label="Avisar cuántos días después del último pago" name="dias_aviso_pago" type="number" min="0" max="120" defaultValue={cfg.dias_aviso_pago || "15"} required
+              hint="Cuando se paga la última cuota de una póliza, el aviso no aparece en el momento sino pasados estos días." />
+          </div>
+        </Card>
+
+        <Card title="Cobranza: 1er aviso y 2.º aviso">
+          <div className="max-w-sm">
+            <Field label="Días entre un aviso y el siguiente" name="dias_entre_avisos" type="number" min="0" max="120" defaultValue={cfg.dias_entre_avisos || "15"} required
+              hint="En Vencimientos cada cuota tiene su 1er aviso y su 2.º aviso (el 2.º se recomienda a estos días del 1.º). Si pasan estos días desde el 2.º aviso y la cuota sigue sin pagarse, aparece una alerta en Avisos." />
           </div>
         </Card>
 

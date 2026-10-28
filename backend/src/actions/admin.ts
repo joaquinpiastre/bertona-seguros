@@ -4,7 +4,7 @@ import { leerArchivo, type Archivo } from "../archivos";
 import { q, q1 } from "../db";
 import { claveNueva, enLista, fijarClave, guardarDoc, recalcularCuota, registrarPagosCuotas, soloDigitos, sincronizarUsuarioSocio } from "../core";
 import { EMAIL_RE, Redirigir, ir, num, txt, txtONull } from "../flash";
-import { ACTUALIZACION, COBROS, ESTADOS_POLIZA, PERIODICIDAD, TIPOS_DOC, esFecha, hoy, sumarMeses } from "../format";
+import { COBROS, ESTADOS_POLIZA, PERIODICIDAD, TIPOS_DOC, esFecha, hoy, sumarMeses } from "../format";
 
 // ───────── Utilidades ─────────
 async function archivoSeguro(fd: FormData, campo: string, volver: string): Promise<Archivo | null> {
@@ -47,7 +47,7 @@ export async function crearCliente(fd: FormData) {
   const u = await q1("SELECT id FROM usuarios WHERE cliente_id = $1 AND rol = 'socio' LIMIT 1", [r!.id]);
   const clave = fd.get("clave") ? String(fd.get("clave")).trim() : claveNueva();
   if (clave.length < 4) ir(`/admin/clientes/${r!.id}`, "error", "Cliente creado, pero la contraseña debe tener al menos 4 caracteres: definila desde acá.");
-  await fijarClave(u!.id, clave);
+  await fijarClave(u!.id, clave, true);
   throw new Redirigir(`/admin/clientes/${r!.id}?ok=${encodeURIComponent("Cliente creado. Ya puede ingresar con su DNI y la contraseña que figura abajo.")}&clave=${encodeURIComponent(clave)}`);
 }
 
@@ -86,7 +86,7 @@ export async function definirClaveCliente(fd: FormData) {
   if (!u) ir(volver, "error", "El cliente no tiene acceso habilitado: revisá que tenga DNI cargado y guardá sus datos.");
   const clave = txt(fd, "clave") || claveNueva();
   if (clave.length < 4) ir(volver, "error", "La contraseña debe tener al menos 4 caracteres.");
-  await fijarClave(u!.id, clave);
+  await fijarClave(u!.id, clave, true);
   throw new Redirigir(`${volver}?ok=${encodeURIComponent("Contraseña guardada. Pasásela al cliente.")}&clave=${encodeURIComponent(clave)}`);
 }
 
@@ -157,7 +157,6 @@ export async function crearPoliza(fd: FormData) {
   const numero = txt(fd, "numero");
   const periodicidad = txt(fd, "periodicidad") || "mensual";
   const cobro = txt(fd, "cobro") || "oficina";
-  const actualizacion = Number(txt(fd, "actualizacion_meses") || 0);
   const conCuotas = cobro === "oficina"; // con tarjeta cobra la compañía: no hay cuotas que gestionar acá
   const cuotasCant = conCuotas ? Math.round(num(fd, "cuotas_cant")) : 0;
   const importe = num(fd, "importe_cuota") || 0;
@@ -167,7 +166,7 @@ export async function crearPoliza(fd: FormData) {
   const estado = txt(fd, "estado") || "vigente";
   if (!cid || !(await q1("SELECT 1 FROM clientes WHERE id = $1", [cid]))) ir(volver, "error", "Elegí un cliente.");
   if (!ramo || !compania || !numero) ir(volver, "error", "Ramo, compañía y número de póliza son obligatorios.");
-  if (!PERIODICIDAD[periodicidad] || !ESTADOS_POLIZA[estado] || !COBROS[cobro] || !ACTUALIZACION[String(actualizacion)]) ir(volver, "error", "Datos de póliza inválidos.");
+  if (!PERIODICIDAD[periodicidad] || !ESTADOS_POLIZA[estado] || !COBROS[cobro]) ir(volver, "error", "Datos de póliza inválidos.");
   if (conCuotas && !(cuotasCant >= 1 && cuotasCant <= 60)) ir(volver, "error", "La cantidad de cuotas debe estar entre 1 y 60.");
   if (!(importe >= 0)) ir(volver, "error", "El importe de la cuota no es válido.");
   if (conCuotas && !esFecha(primerVenc)) ir(volver, "error", "Indicá el vencimiento de la primera cuota.");
@@ -178,10 +177,10 @@ export async function crearPoliza(fd: FormData) {
 
   const p = await q1(
     `INSERT INTO polizas (cliente_id, ramo, compania, numero, riesgo, dominio, suma_asegurada, periodicidad,
-       cuotas_cant, importe_cuota, vigencia_desde, vigencia_hasta, estado, notas, cobertura, cobro, actualizacion_meses)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING id`,
+       cuotas_cant, importe_cuota, vigencia_desde, vigencia_hasta, estado, notas, cobertura, cobro)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id`,
     [cid, ramo, compania, numero, txtONull(fd, "riesgo"), txtONull(fd, "dominio")?.toUpperCase() ?? null,
-     Number.isFinite(suma) ? suma : null, periodicidad, cuotasCant, importe, desde || null, hasta || null, estado, txtONull(fd, "notas"), txtONull(fd, "cobertura"), cobro, actualizacion]
+     Number.isFinite(suma) ? suma : null, periodicidad, cuotasCant, importe, desde || null, hasta || null, estado, txtONull(fd, "notas"), txtONull(fd, "cobertura"), cobro]
   );
   const pid = p!.id as number;
   const paso = PERIODICIDAD[periodicidad].meses;
@@ -189,14 +188,9 @@ export async function crearPoliza(fd: FormData) {
     await q("INSERT INTO cuotas (poliza_id, numero, vencimiento, importe) VALUES ($1,$2,$3,$4)", [pid, i + 1, sumarMeses(primerVenc, i * paso), importe]);
   }
   if (fPoliza) await guardarDoc(fPoliza, { cliente_id: cid, poliza_id: pid, tipo: "poliza", subido_por: yo.id });
-  const docCert = fCert ? await guardarDoc(fCert, { cliente_id: cid, poliza_id: pid, tipo: "certificado", subido_por: yo.id }) : null;
-  // Con actualización periódica se abre el primer período de certificado (el archivo, si se subió, queda asociado).
-  if (actualizacion > 0) {
-    const ini = desde || hoy();
-    await q("INSERT INTO certificados (poliza_id, desde, hasta, documento_id) VALUES ($1,$2,$3,$4)", [pid, ini, sumarMeses(ini, actualizacion), docCert]);
-  }
+  if (fCert) await guardarDoc(fCert, { cliente_id: cid, poliza_id: pid, tipo: "certificado", subido_por: yo.id });
   const resumen = conCuotas ? `${cuotasCant} cuota${cuotasCant > 1 ? "s" : ""}` : "cobro por tarjeta (sin cuotas)";
-  ir(`/admin/polizas/${pid}`, "ok", `Póliza creada con ${resumen}${actualizacion > 0 ? " y su primer certificado" : ""}.`);
+  ir(`/admin/polizas/${pid}`, "ok", `Póliza creada con ${resumen}.`);
 }
 
 export async function actualizarPoliza(fd: FormData) {
@@ -211,16 +205,15 @@ export async function actualizarPoliza(fd: FormData) {
   const hasta = txt(fd, "vigencia_hasta");
   const cobro = txt(fd, "cobro") || "oficina";
   const periodicidad = txt(fd, "periodicidad") || "mensual";
-  const actualizacion = Number(txt(fd, "actualizacion_meses") || 0);
   if (!ramo || !compania || !numero) ir(volver, "error", "Ramo, compañía y número son obligatorios.");
-  if (!ESTADOS_POLIZA[estado] || !COBROS[cobro] || !PERIODICIDAD[periodicidad] || !ACTUALIZACION[String(actualizacion)]) ir(volver, "error", "Estado, cobro, frecuencia de cuotas o actualización inválidos.");
+  if (!ESTADOS_POLIZA[estado] || !COBROS[cobro] || !PERIODICIDAD[periodicidad]) ir(volver, "error", "Estado, cobro o frecuencia de cuotas inválidos.");
   if ((desde && !esFecha(desde)) || (hasta && !esFecha(hasta))) ir(volver, "error", "Fechas de vigencia inválidas.");
   const suma = num(fd, "suma_asegurada");
   await q(
     `UPDATE polizas SET ramo=$2, compania=$3, numero=$4, riesgo=$5, dominio=$6, suma_asegurada=$7,
-       vigencia_desde=$8, vigencia_hasta=$9, estado=$10, notas=$11, cobertura=$12, cobro=$13, actualizacion_meses=$14, periodicidad=$15 WHERE id=$1`,
+       vigencia_desde=$8, vigencia_hasta=$9, estado=$10, notas=$11, cobertura=$12, cobro=$13, periodicidad=$14 WHERE id=$1`,
     [id, ramo, compania, numero, txtONull(fd, "riesgo"), txtONull(fd, "dominio")?.toUpperCase() ?? null,
-     Number.isFinite(suma) ? suma : null, desde || null, hasta || null, estado, txtONull(fd, "notas"), txtONull(fd, "cobertura"), cobro, actualizacion, periodicidad]
+     Number.isFinite(suma) ? suma : null, desde || null, hasta || null, estado, txtONull(fd, "notas"), txtONull(fd, "cobertura"), cobro, periodicidad]
   );
   ir(volver, "ok", "Póliza actualizada.");
 }
@@ -284,44 +277,25 @@ export async function anularCuota(fd: FormData) {
   ir(volver, "ok", "Cuota anulada.");
 }
 
-// ───────── Certificados por período (pólizas con actualización periódica, ej. cuatrimestral) ─────────
-/** Carga el certificado de un nuevo período (con su archivo, si se sube) y resuelve el aviso de vencimiento. */
-export async function cargarCertificado(fd: FormData) {
-  const yo = await requireAdmin();
-  const pid = Number(txt(fd, "poliza_id"));
-  const volver = `/admin/polizas/${pid}`;
-  const desde = txt(fd, "desde");
-  const hasta = txt(fd, "hasta");
-  const p = await q1("SELECT cliente_id FROM polizas WHERE id = $1", [pid]);
-  if (!p) ir("/admin/polizas", "error", "Póliza inexistente.");
-  if (!esFecha(desde) || !esFecha(hasta) || hasta <= desde) ir(volver, "error", "Indicá el período del certificado: la fecha «hasta» tiene que ser posterior a «desde».");
-  const a = await archivoSeguro(fd, "archivo", volver);
-  const docId = a ? await guardarDoc(a, { cliente_id: p!.cliente_id, poliza_id: pid, tipo: "certificado", subido_por: yo.id }) : null;
-  await q("INSERT INTO certificados (poliza_id, desde, hasta, documento_id, nota) VALUES ($1,$2,$3,$4,$5)", [pid, desde, hasta, docId, txtONull(fd, "nota")]);
-  await q("UPDATE alertas SET estado = 'resuelta', resuelta_en = now() WHERE tipo = 'certificado' AND poliza_id = $1 AND estado = 'pendiente'", [pid]);
-  ir(volver, "ok", "Certificado cargado.");
-}
-
-export async function eliminarCertificado(fd: FormData) {
-  await requireAdmin();
-  const id = Number(txt(fd, "id"));
-  const pid = Number(txt(fd, "poliza_id"));
-  const c = await q1("SELECT documento_id FROM certificados WHERE id = $1 AND poliza_id = $2", [id, pid]);
-  if (!c) ir(`/admin/polizas/${pid}`, "error", "Certificado inexistente.");
-  await q("DELETE FROM certificados WHERE id = $1", [id]);
-  if (c!.documento_id) await q("DELETE FROM documentos WHERE id = $1", [c!.documento_id]);
-  ir(`/admin/polizas/${pid}`, "ok", "Certificado eliminado.");
-}
-
-// ───────── Cobranza: marcar a quién ya se le escribió ─────────
-/** Marca (o desmarca) como "escrito" las cuotas pendientes de un cliente. Cada cuota nueva que se acerca o vence arranca sin marcar. */
-export async function marcarEscrito(fd: FormData) {
+// ───────── Cobranza: 1er y 2.º aviso ─────────
+/**
+ * Marca (o desmarca) el 1er o el 2.º aviso de las cuotas pendientes de un cliente. Marcar el 2.º también marca el 1.º; desmarcar el 1.º
+ * desmarca el 2.º. Cada cuota nueva que se acerca o vence arranca sin avisos.
+ */
+export async function marcarAviso(fd: FormData) {
   await requireAdmin();
   const ids = fd.getAll("cuota_id").map((v) => Number(v)).filter((n) => n > 0);
   const volverPedido = txt(fd, "volver");
   const volver = volverPedido.startsWith("/admin/vencimientos") ? volverPedido : "/admin/vencimientos";
+  const aviso = txt(fd, "aviso") === "2" ? 2 : 1;
+  const marcar = txt(fd, "valor") === "1";
   if (!ids.length) ir(volver, "error", "No hay cuotas para marcar.");
-  await q(`UPDATE cuotas SET escrito_en = ${txt(fd, "escrito") === "1" ? "now()" : "NULL"} WHERE id IN (${enLista(ids)}) AND estado = 'pendiente'`);
+  const lista = enLista(ids);
+  if (aviso === 1) {
+    await q(`UPDATE cuotas SET aviso1_en = ${marcar ? "COALESCE(aviso1_en, now())" : "NULL"}${marcar ? "" : ", aviso2_en = NULL"} WHERE id IN (${lista}) AND estado = 'pendiente'`);
+  } else {
+    await q(`UPDATE cuotas SET aviso2_en = ${marcar ? "COALESCE(aviso2_en, now())" : "NULL"}${marcar ? ", aviso1_en = COALESCE(aviso1_en, now())" : ""} WHERE id IN (${lista}) AND estado = 'pendiente'`);
+  }
   throw new Redirigir(volver);
 }
 
@@ -395,6 +369,28 @@ export async function anularPago(fd: FormData) {
     await recalcularCuota(g.cuota_id);
   }
   ir(volver, "ok", grupo.length > 1 ? "Recibo anulado. Las cuotas volvieron a quedar pendientes." : "Pago anulado. La cuota volvió a quedar pendiente.");
+}
+
+/**
+ * Elimina por completo un cobro cargado por error (el recibo con todas sus cuotas). Las cuotas vuelven a quedar pendientes y los archivos
+ * que se le cargaron al recibo se borran. Si el cobro salía de un pago informado por el cliente, ese pago vuelve a "pendiente de revisar"
+ * con su comprobante. A diferencia de anular, no deja rastro.
+ */
+export async function eliminarPago(fd: FormData) {
+  await requireAdmin();
+  const id = Number(txt(fd, "id"));
+  const volverPedido = txt(fd, "volver");
+  const volver = volverPedido.startsWith("/admin/") ? volverPedido : "/admin/pagos";
+  const p = await q1("SELECT recibo_nro, cliente_id FROM pagos WHERE id = $1", [id]);
+  if (!p) ir(volver, "error", "Ese cobro ya no existe.");
+  const grupo = await q("SELECT id, cuota_id FROM pagos WHERE recibo_nro = $1 AND cliente_id = $2", [p!.recibo_nro, p!.cliente_id]);
+  const ids = enLista(grupo.map((g) => g.id as number));
+  await q(`UPDATE documentos SET pago_id = NULL WHERE pago_id IN (${ids}) AND id IN (SELECT documento_id FROM avisos_pago WHERE documento_id IS NOT NULL)`);
+  await q(`UPDATE avisos_pago SET estado = 'pendiente', pago_id = NULL WHERE pago_id IN (${ids})`);
+  await q(`DELETE FROM pagos WHERE id IN (${ids})`);
+  for (const g of grupo) await recalcularCuota(g.cuota_id);
+  const nro = String(p!.recibo_nro).padStart(6, "0");
+  ir(volver, "ok", `Cobro eliminado: el recibo N° ${nro} ya no existe${grupo.length > 1 ? " y sus cuotas volvieron" : " y su cuota volvió"} a quedar pendiente.`);
 }
 
 export async function subirArchivoPago(fd: FormData) {

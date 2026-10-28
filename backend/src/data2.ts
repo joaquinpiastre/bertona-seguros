@@ -3,14 +3,15 @@
  * El servidor las junta con las de data.ts (estas tienen prioridad).
  */
 import { firmarTokenRecibo, portalUsuario, requireAdmin } from "./auth";
-import { diasAvisoCertificado, enLista, estadoPolizas, generarAlertasVencidas, getConfigs, TEXTO_BLOQUEO } from "./core";
+import { diasEntreAvisos, enLista, estadoPolizas, generarAlertasVencidas, getConfigs, TEXTO_BLOQUEO } from "./core";
 import { DATOS } from "./data";
 import { q, q1 } from "./db";
 import { NoEncontrado } from "./flash";
 import { PRODUCTOR } from "./empresa";
 import { ADVERTENCIAS_CONSTANCIA } from "./pdf";
 import { datosReciboGrupo } from "./queries";
-import { hoy, sumarDias, sumarMeses } from "./format";
+import { descifrar } from "./secreto";
+import { hoy, sumarDias } from "./format";
 
 type SP = URLSearchParams;
 const idDe = (sp: SP) => Number(sp.get("id")) || 0;
@@ -44,34 +45,8 @@ export const DATOS2: Record<string, (sp: SP) => Promise<unknown>> = {
   async vencimientos(sp) {
     await requireAdmin();
     const h = hoy();
-    const vista = ["proximas", "todas", "polizas", "certificados"].includes(sp.get("vista") ?? "") ? sp.get("vista")! : "vencidas";
+    const vista = ["proximas", "todas", "polizas"].includes(sp.get("vista") ?? "") ? sp.get("vista")! : "vencidas";
     const busq = sp.get("q");
-
-    // Pólizas con actualización periódica cuyo certificado venció, vence pronto o nunca se cargó.
-    if (vista === "certificados") {
-      const dias = await diasAvisoCertificado();
-      const params: unknown[] = [sumarDias(h, dias)];
-      let where = "p.actualizacion_meses > 0 AND p.estado IN ('vigente','en_tramite') AND cl.activo";
-      if (busq) {
-        params.push(`%${busq}%`);
-        where += ` AND (cl.nombre ILIKE $2 OR p.numero ILIKE $2 OR p.dominio ILIKE $2)`;
-      }
-      const certificados = await q(
-        `SELECT * FROM (
-           SELECT p.id, p.numero, p.compania, p.ramo, p.riesgo, p.dominio, p.cobro, p.actualizacion_meses,
-                  cl.id AS cliente_id, cl.nombre AS cliente, cl.telefono, cl.es_agencia,
-                  (SELECT MAX(hasta) FROM certificados WHERE poliza_id = p.id)::text AS hasta
-           FROM polizas p JOIN clientes cl ON cl.id = p.cliente_id WHERE ${where}
-         ) x WHERE x.hasta IS NULL OR x.hasta::date <= $1::date
-         ORDER BY x.hasta NULLS FIRST LIMIT 300`,
-        params
-      );
-      return {
-        vista,
-        dias,
-        certificados: certificados.map((c) => ({ ...c, atraso: c.hasta ? Math.round((Date.parse(h) - Date.parse(c.hasta)) / 86400000) : null })),
-      };
-    }
 
     if (vista === "polizas") {
       const params: unknown[] = [h, sumarDias(h, 30)];
@@ -94,9 +69,11 @@ export const DATOS2: Record<string, (sp: SP) => Promise<unknown>> = {
 
     const params: unknown[] = [h];
     let where = "c.estado = 'pendiente' AND cl.activo AND p.estado <> 'anulada'";
-    const escrito = sp.get("escrito");
-    if (escrito === "no") where += " AND c.escrito_en IS NULL";
-    else if (escrito === "si") where += " AND c.escrito_en IS NOT NULL";
+    // Filtro por aviso de cobranza: sin avisar, con 1er aviso (todavía sin 2.º) o con 2.º aviso.
+    const aviso = sp.get("aviso");
+    if (aviso === "sin") where += " AND c.aviso1_en IS NULL";
+    else if (aviso === "1") where += " AND c.aviso1_en IS NOT NULL AND c.aviso2_en IS NULL";
+    else if (aviso === "2") where += " AND c.aviso2_en IS NOT NULL";
     if (vista === "vencidas") where += " AND c.vencimiento < $1::date";
     else if (vista === "proximas") {
       params.push(sumarDias(h, 15));
@@ -108,7 +85,8 @@ export const DATOS2: Record<string, (sp: SP) => Promise<unknown>> = {
     }
     const filas = await q(
       `SELECT c.id, c.numero, c.vencimiento::text AS venc, c.importe::float8 AS importe, ($1::date - c.vencimiento)::int AS atraso,
-              (c.escrito_en AT TIME ZONE 'America/Argentina/Buenos_Aires')::date::text AS escrito,
+              (c.aviso1_en AT TIME ZONE 'America/Argentina/Buenos_Aires')::date::text AS aviso1,
+              (c.aviso2_en AT TIME ZONE 'America/Argentina/Buenos_Aires')::date::text AS aviso2,
               p.id AS poliza_id, p.numero AS poliza, p.cuotas_cant, p.compania, p.dominio, p.riesgo,
               cl.id AS cliente_id, cl.nombre AS cliente, cl.telefono, cl.es_agencia,
               (SELECT COALESCE(SUM(x.importe),0)::float8 FROM cuotas x JOIN polizas px ON px.id = x.poliza_id
@@ -119,7 +97,7 @@ export const DATOS2: Record<string, (sp: SP) => Promise<unknown>> = {
        WHERE ${where} ORDER BY c.vencimiento, cl.nombre LIMIT 400`,
       params
     );
-    return { vista, filas, transferir: (await getConfigs(["mp_instrucciones"])).mp_instrucciones };
+    return { vista, filas, transferir: (await getConfigs(["mp_instrucciones"])).mp_instrucciones, diasEntreAvisos: await diasEntreAvisos() };
   },
 
   async alertas() {
@@ -158,12 +136,23 @@ export const DATOS2: Record<string, (sp: SP) => Promise<unknown>> = {
 
   async clienteDetalle(sp) {
     const base = (await DATOS.clienteDetalle(sp)) as Record<string, unknown>;
-    const acceso = await q1("SELECT tiene_clave, dni, activo FROM usuarios WHERE cliente_id = $1 AND rol = 'socio' LIMIT 1", [idDe(sp)]);
+    const u = await q1("SELECT tiene_clave, dni, activo, clave_cifrada FROM usuarios WHERE cliente_id = $1 AND rol = 'socio' LIMIT 1", [idDe(sp)]);
+    // Solo el personal ve la contraseña que le entregó al cliente (si todavía no la cambió): sirve para volver a compartirla por WhatsApp.
+    const acceso = u ? { tiene_clave: u.tiene_clave, dni: u.dni, activo: u.activo, clave: descifrar(u.clave_cifrada) } : null;
+    // Todos los recibos del cliente (un renglón por recibo, aunque cubra varias cuotas) para elegir cuál imprimir o enviar.
+    const pagos = await q(
+      `SELECT MIN(pg.id) AS id, pg.recibo_nro, MIN(pg.fecha)::text AS fecha, SUM(pg.importe)::float8 AS importe, MIN(pg.metodo) AS metodo, MIN(pg.estado) AS estado,
+              COUNT(*)::int AS cuotas_n,
+              json_agg(json_build_object('id', pg.id, 'poliza', p.numero, 'dominio', p.dominio, 'cuota', c.numero, 'total', p.cuotas_cant, 'importe', pg.importe::float8) ORDER BY p.id, c.numero) AS lineas
+       FROM pagos pg LEFT JOIN polizas p ON p.id = pg.poliza_id LEFT JOIN cuotas c ON c.id = pg.cuota_id
+       WHERE pg.cliente_id = $1 GROUP BY pg.recibo_nro ORDER BY MIN(pg.fecha) DESC, MIN(pg.id) DESC LIMIT 300`,
+      [idDe(sp)]
+    );
     const siniestros = await q(
       "SELECT s.id, s.estado, s.tipo, s.fecha_hecho::text AS fecha, s.lugar, p.numero AS poliza FROM siniestros s LEFT JOIN polizas p ON p.id = s.poliza_id WHERE s.cliente_id = $1 ORDER BY s.id DESC LIMIT 10",
       [idDe(sp)]
     );
-    return { ...base, acceso, siniestros };
+    return { ...base, acceso, siniestros, pagos };
   },
 
   async siniestros(sp) {
@@ -226,8 +215,7 @@ export const DATOS2: Record<string, (sp: SP) => Promise<unknown>> = {
       [idDe(sp)]
     );
     if (!p) throw new NoEncontrado();
-    const meses = (await q1("SELECT actualizacion_meses AS m FROM polizas WHERE id = $1", [p.id]))?.m ?? 0;
-    return { p, advertencias: ADVERTENCIAS_CONSTANCIA, productor: `${PRODUCTOR.matricula} - ${PRODUCTOR.nombre}`, hoy: hoy(), venceSugerido: meses > 0 ? sumarMeses(hoy(), meses) : "" };
+    return { p, advertencias: ADVERTENCIAS_CONSTANCIA, productor: `${PRODUCTOR.matricula} - ${PRODUCTOR.nombre}`, hoy: hoy() };
   },
 
   async reciboEnlace(sp) {
@@ -248,7 +236,7 @@ export const DATOS2: Record<string, (sp: SP) => Promise<unknown>> = {
 
   async configuracion() {
     await requireAdmin();
-    return { cfg: await getConfigs(["dias_gracia", "dias_aviso_certificado", "dias_refacturacion", "auxilio_telefono", "auxilio_texto", "auxilio_planes", "mp_instrucciones"]) };
+    return { cfg: await getConfigs(["dias_gracia", "dias_aviso_renovacion", "dias_refacturacion", "dias_aviso_pago", "dias_entre_avisos", "auxilio_telefono", "auxilio_texto", "auxilio_planes", "mp_instrucciones"]) };
   },
 
   // ───────── Portal del cliente ─────────

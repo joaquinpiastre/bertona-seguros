@@ -71,13 +71,6 @@ export async function iniciarSesionDni(dni: string, password: string, ip: string
 }
 
 /** Reenvía una descarga (documento, recibo, CSV) desde el backend conservando cabeceras de archivo. */
-/** Pide al backend que lea las fechas de una constancia de cobertura en PDF (solo personal; el backend lo verifica). */
-export async function leerCertificado(fd: FormData): Promise<Response> {
-  const { base } = config();
-  const r = await fetch(`${base}/leer-certificado`, { method: "POST", headers: await cabeceras(), body: fd, cache: "no-store" });
-  return new Response(await r.text(), { status: r.status, headers: { "content-type": "application/json" } });
-}
-
 export async function archivo(ruta: string): Promise<Response> {
   const { base } = config();
   const r = await fetch(`${base}/files/${ruta}`, { headers: await cabeceras(), cache: "no-store" });

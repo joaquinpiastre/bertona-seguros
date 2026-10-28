@@ -13,7 +13,9 @@ const TIPOS: Record<string, { label: string; tono: "rojo" | "ambar" | "azul" | "
   pago_informado: { label: "Pago informado", tono: "ambar" },
   pago_final: { label: "Póliza pagada", tono: "verde" },
   poliza_vencida: { label: "Póliza vencida", tono: "rojo" },
-  certificado: { label: "Certificado", tono: "ambar" },
+  por_renovar: { label: "Por renovar", tono: "ambar" },
+  segundo_aviso: { label: "2.º aviso sin pago", tono: "rojo" },
+  certificado: { label: "Certificado", tono: "gris" }, // avisos viejos del certificado por período (ya no se generan)
   refacturacion: { label: "Refacturar", tono: "rojo" },
 };
 
@@ -25,6 +27,14 @@ function whatsapp(a: Row): string {
   switch (a.tipo) {
     case "poliza_vencida":
       return `${hola}\nTu ${pol} figura vencida desde el ${fecha(a.hasta)}.\nQueremos ayudarte a renovarla para que no quedes sin cobertura. ¿Te enviamos la nueva propuesta?\nContactanos al ${EMPRESA.telefonoVisible} o respondé este mensaje.`;
+    case "por_renovar":
+      return `${hola}
+Tu ${pol} vence el ${fecha(a.hasta)}. Queremos ayudarte a renovarla a tiempo para que no quedes sin cobertura. ¿Te enviamos la nueva propuesta?
+Contactanos al ${EMPRESA.telefonoVisible} o respondé este mensaje.`;
+    case "segundo_aviso":
+      return `${hola}
+Te avisamos hace unos días por el pago de tu ${pol} y todavía no lo registramos. Para que no quedes sin cobertura, ¿podés regularizarlo? Si ya pagaste, mandanos el comprobante.
+Contactanos al ${EMPRESA.telefonoVisible} o respondé este mensaje.`;
     case "refacturacion":
       return `${hola}
 Terminaron las cuotas de tu ${pol}. Queremos ayudarte a renovar el seguro para que no quedes sin cobertura. ¿Te enviamos la nueva propuesta?
@@ -44,7 +54,7 @@ Contactanos al ${EMPRESA.telefonoVisible} o respondé este mensaje.`;
 
 function Aviso({ a, resuelta }: { a: Row; resuelta?: boolean }) {
   const t = TIPOS[a.tipo] ?? { label: a.tipo, tono: "gris" as const };
-  const wa = a.tipo === "certificado" ? "" : waCliente(a.telefono, whatsapp(a)); // el certificado se gestiona con la compañía, no con el cliente
+  const wa = a.tipo === "certificado" ? "" : waCliente(a.telefono, whatsapp(a));
   return (
     <li className="py-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -57,10 +67,11 @@ function Aviso({ a, resuelta }: { a: Row; resuelta?: boolean }) {
           <p className="mt-1 font-semibold text-brand-900">{a.titulo}</p>
           {a.detalle && <p className="mt-1 whitespace-pre-line text-ink-soft">{a.detalle}</p>}
           {a.poliza_id && (
-            <Link href={`/admin/polizas/${a.poliza_id}`} className="mt-1 inline-block text-xs font-semibold text-brand-700 underline">{a.tipo === "certificado" && !resuelta ? `Cargar el certificado en la póliza ${a.poliza}` : `Ver póliza ${a.poliza}`}</Link>
+            <Link href={`/admin/polizas/${a.poliza_id}`} className="mt-1 inline-block text-xs font-semibold text-brand-700 underline">Ver póliza {a.poliza}</Link>
           )}
           {a.tipo === "siniestro" && a.datos && <> · <Link href={`/admin/siniestros/${a.datos}`} className="text-xs font-semibold text-brand-700 underline">Ver siniestro</Link></>}
           {a.tipo === "pago_informado" && <> · <Link href="/admin/comprobantes" className="text-xs font-semibold text-brand-700 underline">Ir a pagos informados</Link></>}
+          {a.tipo === "segundo_aviso" && <> · <Link href="/admin/vencimientos?vista=todas&aviso=2" className="text-xs font-semibold text-brand-700 underline">Ir a Vencimientos</Link></>}
         </div>
         {!resuelta && (
           <div className="flex flex-wrap items-start gap-2">

@@ -3,7 +3,7 @@
  * Las de /admin exigen administrador; las de /portal exigen socio.
  */
 import { portalUsuario, requireAdmin } from "./auth";
-import { diasAvisoCertificado, enLista } from "./core";
+import { enLista } from "./core";
 import { q, q1 } from "./db";
 import { ESTADOS_POLIZA, METODOS, esFecha, hoy, sumarDias } from "./format";
 import { NoEncontrado } from "./flash";
@@ -233,18 +233,15 @@ export const DATOS: Record<string, (sp: SP) => Promise<unknown>> = {
       [pid]
     );
     if (!p) throw new NoEncontrado();
-    const [cuotas, docs, certificados] = await Promise.all([
+    const [cuotas, docs] = await Promise.all([
       q(
         `SELECT c.id, c.numero, c.vencimiento::text AS venc, c.importe::float8 AS importe, c.estado,
                 (SELECT pg.id FROM pagos pg WHERE pg.cuota_id = c.id AND pg.estado = 'aplicado' ORDER BY pg.id DESC LIMIT 1) AS pago_id,
                 (SELECT pg.recibo_nro FROM pagos pg WHERE pg.cuota_id = c.id AND pg.estado = 'aplicado' ORDER BY pg.id DESC LIMIT 1) AS recibo
          FROM cuotas c WHERE c.poliza_id = $1 ORDER BY c.numero`, [pid]),
       q("SELECT id, tipo, nombre, tamano, creado::text AS creado FROM documentos WHERE poliza_id = $1 AND pago_id IS NULL ORDER BY id", [pid]),
-      q(
-        `SELECT ce.id, ce.desde::text AS desde, ce.hasta::text AS hasta, ce.nota, ce.documento_id, d.nombre AS doc_nombre
-         FROM certificados ce LEFT JOIN documentos d ON d.id = ce.documento_id WHERE ce.poliza_id = $1 ORDER BY ce.hasta DESC, ce.id DESC`, [pid]),
     ]);
-    return { p, cuotas, docs, certificados, diasAviso: await diasAvisoCertificado() };
+    return { p, cuotas, docs };
   },
 
   async avisos() {

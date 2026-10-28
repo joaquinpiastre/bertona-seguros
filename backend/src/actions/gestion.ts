@@ -91,19 +91,27 @@ export async function aplicarTramite(fd: FormData) {
 }
 
 // ───────── Configuración ─────────
+/** Reglas numéricas de la configuración: [clave, nombre para el mensaje de error, máximo]. */
+const REGLAS_DIAS: [string, string, number][] = [
+  ["dias_gracia", "Los días de gracia", 365],
+  ["dias_aviso_renovacion", "Los días de anticipación para renovar una póliza", 120],
+  ["dias_refacturacion", "Los días para refacturar", 120],
+  ["dias_aviso_pago", "Los días para avisar que una póliza quedó paga", 120],
+  ["dias_entre_avisos", "Los días entre avisos de cobranza", 120],
+];
+
 export async function guardarConfig(fd: FormData) {
   await requireAdmin();
-  const dias = Math.round(num(fd, "dias_gracia"));
-  if (!(dias >= 0 && dias <= 365)) ir("/admin/configuracion", "error", "Los días de gracia deben estar entre 0 y 365.");
-  await setConfig("dias_gracia", String(dias));
-  const avisoCert = Math.round(num(fd, "dias_aviso_certificado"));
-  if (!(avisoCert >= 0 && avisoCert <= 120)) ir("/admin/configuracion", "error", "Los días de aviso del certificado deben estar entre 0 y 120.");
-  await setConfig("dias_aviso_certificado", String(avisoCert));
-  const refact = Math.round(num(fd, "dias_refacturacion"));
-  if (!(refact >= 0 && refact <= 120)) ir("/admin/configuracion", "error", "Los días para refacturar deben estar entre 0 y 120.");
-  await setConfig("dias_refacturacion", String(refact));
+  // Primero se valida todo y recién después se guarda: si algo está mal no se guarda nada y el aviso lo dice.
+  const dias: [string, number][] = [];
+  for (const [clave, nombre, max] of REGLAS_DIAS) {
+    const n = Math.round(num(fd, clave));
+    if (!(n >= 0 && n <= max)) ir("/admin/configuracion", "error", `${nombre} tienen que estar entre 0 y ${max}. No se guardó nada.`);
+    dias.push([clave, n]);
+  }
+  for (const [clave, n] of dias) await setConfig(clave, String(n));
   for (const k of ["auxilio_telefono", "auxilio_texto", "auxilio_planes", "mp_instrucciones"]) await setConfig(k, txt(fd, k));
-  ir("/admin/configuracion", "ok", "Configuración guardada.");
+  ir("/admin/configuracion", "ok", "Configuración guardada. Los avisos ya se recalcularon con los días nuevos.");
 }
 
 // ───────── Siniestros ─────────
@@ -199,14 +207,9 @@ export async function guardarConstancia(fd: FormData) {
   if (txt(fd, "vence") && !esFecha(txt(fd, "vence"))) ir(volver, "error", "La fecha de vencimiento no es válida.");
   if (d.vence && d.vence <= d.emitida) ir(volver, "error", "El vencimiento tiene que ser posterior a la fecha de emisión.");
   const pdf = await generarConstanciaPdf(d);
-  const docId = await guardarDoc(
+  await guardarDoc(
     { nombre: `Constancia de cobertura ${d.poliza}.pdf`, mime: "application/pdf", datos: Buffer.from(pdf) },
     { cliente_id: p!.cliente_id, poliza_id: pid, tipo: "certificado", subido_por: yo.id }
   );
-  // Con vencimiento, la constancia queda registrada como certificado del período: el sistema avisa antes de que venza.
-  if (d.vence) {
-    await q("INSERT INTO certificados (poliza_id, desde, hasta, documento_id) VALUES ($1,$2,$3,$4)", [pid, d.emitida, d.vence, docId]);
-    await q("UPDATE alertas SET estado = 'resuelta', resuelta_en = now() WHERE tipo = 'certificado' AND poliza_id = $1 AND estado = 'pendiente'", [pid]);
-  }
-  ir(`/admin/polizas/${pid}`, "ok", `Constancia guardada en los papeles de la póliza: el cliente ya puede descargarla.${d.vence ? " Se registró su vencimiento para avisarte antes de que venza." : ""}`);
+  ir(`/admin/polizas/${pid}`, "ok", "Constancia guardada en los papeles de la póliza: el cliente ya puede descargarla.");
 }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { dato, type Row } from "@/lib/api";
 import { notFound } from "next/navigation";
 import { SubmitButton } from "@/components/panel/Cliente";
-import { Badge, Card, Field, Flash, LinkBtn, PageHead, SelectField, Tabla, Td, TextArea, Th } from "@/components/panel/ui";
+import { Badge, Card, Field, Flash, LinkBtn, PageHead, SelectField, Tabla, Td, TextArea, Th, btnGold, btnSm } from "@/components/panel/ui";
 import { actualizarCliente, alternarCliente, eliminarCliente, eliminarPoliza, crearContactoAdmin, eliminarContactoAdmin, definirClaveCliente } from "@/lib/actions/admin";
 import { ESTADOS_POLIZA, METODOS, PARENTESCOS, fecha, money, waCliente } from "@/lib/format";
 import { PORTAL_URL } from "@/config/empresa";
@@ -18,8 +18,10 @@ export default async function DetalleCliente({ params, searchParams }: Props) {
   }>("clienteDetalle", { id: cid });
 
   const volver = `/admin/clientes/${cid}`;
-  const wa = sp.clave && c.telefono
-    ? waCliente(c.telefono, `Hola ${String(c.nombre).split(" ")[0]}! Ya podés ingresar a tu cuenta de Bertona Seguros: entrá a ${PORTAL_URL} con tu DNI ${acceso?.dni ?? c.documento} y esta contraseña: ${sp.clave}. Después, si querés, la cambiás desde "Mis datos".`)
+  // Contraseña que la oficina le entregó: recién definida (viene en la dirección) o guardada cifrada, para poder volver a compartirla.
+  const clave = sp.clave || acceso?.clave || "";
+  const wa = clave && c.telefono
+    ? waCliente(c.telefono, `Hola ${String(c.nombre).split(" ")[0]}! Ya podés ingresar a tu cuenta de Bertona Seguros: entrá a ${PORTAL_URL} con tu DNI ${acceso?.dni ?? c.documento} y esta contraseña: ${clave}. Después, si querés, la cambiás desde "Mis datos".`)
     : "";
 
   return (
@@ -60,14 +62,16 @@ export default async function DetalleCliente({ params, searchParams }: Props) {
         <Card title="Ingreso al portal">
           {acceso ? (
             <div className="space-y-4 text-sm">
-              {sp.clave && (
+              {clave ? (
                 <div className="border-2 border-accent-500 bg-accent-300/15 p-4">
                   <p className="text-xs font-semibold uppercase tracking-wider text-accent-600">Contraseña para pasarle al cliente</p>
-                  <p className="mt-1 font-display text-3xl font-bold tracking-widest text-brand-900">{sp.clave}</p>
-                  <p className="mt-1 text-xs text-ink-soft">Anotala o envíasela ahora: después no se puede volver a ver (solo cambiar por otra).</p>
-                  {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex bg-[#1fa855] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#188a45]">Enviar acceso por WhatsApp</a>}
+                  <p className="mt-1 font-display text-3xl font-bold tracking-widest text-brand-900">{clave}</p>
+                  <p className="mt-1 text-xs text-ink-soft">Queda guardada para que puedas volver a compartirla cuando quieras. Si el cliente la cambia desde su cuenta, deja de mostrarse.</p>
+                  {wa ? <a href={wa} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex bg-[#1fa855] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#188a45]">Enviar acceso por WhatsApp</a> : <p className="mt-3 text-xs text-amber-800">Cargale el teléfono al cliente para poder mandársela por WhatsApp.</p>}
                 </div>
-              )}
+              ) : acceso.tiene_clave ? (
+                <p className="border border-line bg-soft p-3 text-xs text-ink-soft">No tengo guardada la contraseña actual (el cliente la cambió o se definió antes de esta mejora). Para volver a compartirle el acceso, dale una nueva abajo: se muestra acá con el botón de WhatsApp.</p>
+              ) : null}
               <p>Usuario (DNI): <strong className="text-brand-900">{acceso.dni}</strong></p>
               <p>{acceso.activo ? <Badge tono="verde">Acceso activo</Badge> : <Badge tono="rojo">Acceso desactivado</Badge>} {acceso.tiene_clave ? <Badge tono="azul">Tiene contraseña</Badge> : <Badge tono="ambar">Sin contraseña: todavía no puede ingresar</Badge>}</p>
               <form action={definirClaveCliente} className="space-y-3 border-t border-line pt-4">
@@ -106,7 +110,7 @@ export default async function DetalleCliente({ params, searchParams }: Props) {
         </div>
       </Card>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-6">
         <Card title="Contactos de emergencia">
           {contactos.length === 0 && <p className="mb-4 text-sm text-ink-soft">Sin contactos cargados.</p>}
           <ul className="divide-y divide-line">
@@ -126,22 +130,37 @@ export default async function DetalleCliente({ params, searchParams }: Props) {
             <div className="sm:col-span-2"><SubmitButton variant="ghost" small>Agregar contacto</SubmitButton></div>
           </form>
         </Card>
-
-        <Card title="Últimos pagos" actions={<Link href={`/admin/pagos?q=${encodeURIComponent(c.nombre)}&desde=2000-01-01&hasta=2100-01-01`} className="text-sm font-semibold text-brand-700 hover:underline">Ver todos</Link>}>
-          <div className="-m-5">
-            <Tabla head={<><Th>Recibo</Th><Th>Fecha</Th><Th>Forma</Th><Th right>Importe</Th></>} vacio="Sin pagos registrados.">
-              {pagos.map((p) => (
-                <tr key={p.id}>
-                  <Td><Link href={`/admin/pagos/${p.id}`} className="font-semibold text-brand-800 hover:underline">N° {String(p.recibo_nro).padStart(6, "0")}</Link>{p.estado === "anulado" && <> <Badge tono="rojo">Anulado</Badge></>}</Td>
-                  <Td>{fecha(p.fecha)}</Td>
-                  <Td>{METODOS[p.metodo] ?? p.metodo}</Td>
-                  <Td right className="font-semibold">{money(p.importe)}</Td>
-                </tr>
-              ))}
-            </Tabla>
-          </div>
-        </Card>
       </div>
+
+      <Card title={`Recibos del cliente (${pagos.length})`} className="mt-6" actions={<Link href={`/admin/pagos?q=${encodeURIComponent(c.nombre)}&desde=2000-01-01&hasta=2100-01-01`} className="text-sm font-semibold text-brand-700 hover:underline">Ver en Pagos y caja</Link>}>
+        <p className="mb-4 text-sm text-ink-soft">Elegí el recibo que querés imprimir o pasarle al cliente. «Imprimir» abre el PDF listo para imprimir (media hoja). Si un recibo cubre varias cuotas, también podés imprimir una sola.</p>
+        <div className="-mx-5 -mb-5">
+          <Tabla head={<><Th>Recibo</Th><Th>Fecha</Th><Th>Detalle</Th><Th>Forma</Th><Th right>Importe</Th><Th /></>} vacio="Sin pagos registrados.">
+            {pagos.map((p) => (
+              <tr key={p.recibo_nro} className={p.estado === "anulado" ? "bg-red-50/40 text-ink-soft" : ""}>
+                <Td><Link href={`/admin/pagos/${p.id}`} className="font-semibold text-brand-800 hover:underline">N° {String(p.recibo_nro).padStart(6, "0")}</Link>{p.estado === "anulado" && <> <Badge tono="rojo">Anulado</Badge></>}</Td>
+                <Td>{fecha(p.fecha)}</Td>
+                <Td>
+                  {(p.lineas as Row[]).map((l, i) => (
+                    <span key={i} className="block text-xs">
+                      {l.poliza ? `Póliza ${l.poliza}${l.dominio ? ` · ${l.dominio}` : ""}${l.cuota ? ` · cuota ${l.cuota}/${l.total}` : ""}` : "A cuenta"}
+                      {p.cuotas_n > 1 && <>{" "}· {money(l.importe)}{" "}{p.estado !== "anulado" && <a href={`/api/recibo/${l.id}?cuota=1`} target="_blank" className="font-semibold text-brand-700 hover:underline">Imprimir solo esta</a>}</>}
+                    </span>
+                  ))}
+                </Td>
+                <Td>{METODOS[p.metodo] ?? p.metodo}</Td>
+                <Td right className="font-semibold">{money(p.importe)}</Td>
+                <Td right>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <a href={`/api/recibo/${p.id}`} target="_blank" className={`${btnGold} ${btnSm}`}>Imprimir</a>
+                    <LinkBtn sm href={`/admin/pagos/${p.id}`}>Ver / enviar</LinkBtn>
+                  </div>
+                </Td>
+              </tr>
+            ))}
+          </Tabla>
+        </div>
+      </Card>
       <Card title="Siniestros" className="mt-6" actions={<LinkBtn sm href={`/admin/siniestros/nuevo?cliente=${cid}`}>Nuevo siniestro</LinkBtn>}>
         {siniestros.length === 0 ? <p className="text-sm text-ink-soft">Sin siniestros cargados.</p> : (
           <ul className="divide-y divide-line text-sm">

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { dato, type Row } from "@/lib/api";
+import { SubmitButton } from "@/components/panel/Cliente";
 import { Badge, Card, Flash, LinkBtn, PageHead, Tabla, Td, Th, btnGhost, btnPrimary, inputCls } from "@/components/panel/ui";
+import { eliminarPago } from "@/lib/actions/admin";
 import { METODOS, esFecha, fecha, hoy, money } from "@/lib/format";
 
 type SP = Promise<{ ok?: string; error?: string; desde?: string; hasta?: string; metodo?: string; q?: string; estado?: string }>;
@@ -84,7 +86,16 @@ export default async function Pagos({ searchParams }: { searchParams: SP }) {
                 <Td>{METODOS[p.metodo] ?? p.metodo}</Td>
                 <Td right className="font-semibold">{money(p.importe)}</Td>
                 <Td>{p.estado === "anulado" ? <Badge tono="rojo">Anulado</Badge> : <Badge tono="verde">Aplicado</Badge>}</Td>
-                <Td right><a href={`/api/recibo/${p.id}`} target="_blank" className="text-xs font-semibold text-brand-700 hover:underline">Recibo</a></Td>
+                <Td right>
+                  <div className="flex items-center justify-end gap-3">
+                    <a href={`/api/recibo/${p.id}`} target="_blank" className="text-xs font-semibold text-brand-700 hover:underline">Recibo</a>
+                    <form action={eliminarPago}>
+                      <input type="hidden" name="id" value={p.id} />
+                      <input type="hidden" name="volver" value={`/admin/pagos?${qs}`} />
+                      <SubmitButton variant="danger" small confirmar={`¿Eliminar el cobro del recibo N° ${String(p.recibo_nro).padStart(6, "0")}? Se borra el recibo completo y sus cuotas vuelven a quedar pendientes. No se puede deshacer.`} pendiente="…">Eliminar</SubmitButton>
+                    </form>
+                  </div>
+                </Td>
               </tr>
             ))}
           </Tabla>
