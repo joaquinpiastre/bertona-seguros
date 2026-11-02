@@ -21,7 +21,7 @@ export default async function DetalleCliente({ params, searchParams }: Props) {
   // Contraseña que la oficina le entregó: recién definida (viene en la dirección) o guardada cifrada, para poder volver a compartirla.
   const clave = sp.clave || acceso?.clave || "";
   const wa = clave && c.telefono
-    ? waCliente(c.telefono, `Hola ${String(c.nombre).split(" ")[0]}! Ya podés ingresar a tu cuenta de Bertona Seguros: entrá a ${PORTAL_URL} con tu DNI ${acceso?.dni ?? c.documento} y esta contraseña: ${clave}. Después, si querés, la cambiás desde "Mis datos".`)
+    ? waCliente(c.telefono, `Hola ${String(c.nombre).split(" ")[0]}! Ya podés ingresar a tu cuenta de Bertona Seguros: entrá a ${PORTAL_URL} con tu DNI ${acceso?.dni ?? c.documento} y la contraseña que está entre comillas:\n\n"${clave}"\n\nDespués, si querés, la cambiás desde Mis datos.`)
     : "";
 
   return (
