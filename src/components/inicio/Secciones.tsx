@@ -18,8 +18,8 @@ const empresas = RAMOS.filter((r) => r.grupo === "empresas");
 export function Portada() {
   return (
     <section className="relative isolate overflow-hidden bg-brand-900 pt-[72px] text-white lg:pt-[108px]">
-      <Image src={IMG.fachada.src} alt={IMG.fachada.alt} fill priority sizes="100vw" className="-z-20 object-cover object-[62%_center] lg:scale-105 lg:blur-[3px]" />
-      <div className="absolute inset-0 -z-10 bg-gradient-to-r from-brand-900/90 via-brand-900/50 to-brand-900/10 max-lg:bg-gradient-to-b max-lg:from-brand-900/80 max-lg:via-brand-900/55 max-lg:to-brand-900/70" aria-hidden />
+      <Image src={IMG.fachada.src} alt={IMG.fachada.alt} fill priority sizes="100vw" className="-z-20 object-cover object-[62%_center] scale-110 blur-xl lg:scale-125 lg:blur-2xl" />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-r from-brand-900/95 via-brand-900/70 to-brand-900/35 max-lg:bg-gradient-to-b max-lg:from-brand-900/80 max-lg:via-brand-900/55 max-lg:to-brand-900/70" aria-hidden />
       <div className="absolute -left-32 bottom-0 -z-10 h-96 w-96 rounded-full bg-sky-500/25 blur-3xl" aria-hidden />
 
       <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 pb-44 pt-14 sm:px-6 sm:pt-20 lg:grid-cols-[1.15fr_0.85fr] lg:pb-48 lg:pt-24">
@@ -47,8 +47,15 @@ export function Portada() {
         </div>
 
         <div className="relative hidden lg:block">
-          <div className="relative ml-auto aspect-[4/5] w-full max-w-md overflow-hidden rounded-[2rem] border-4 border-white/20 shadow-card-lift">
-            <Image src={IMG.fachada.src} alt={IMG.fachada.alt} fill sizes="440px" className="object-cover object-[56%_center]" />
+          <div className="relative ml-auto w-full max-w-md">
+            <div className="absolute inset-0 translate-x-4 translate-y-4 rounded-[2rem] border-2 border-sun-400/70" aria-hidden />
+            <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border-[5px] border-white/90 shadow-card-lift">
+              <Image src={IMG.fachada.src} alt={IMG.fachada.alt} fill quality={90} sizes="440px" className="object-cover object-[56%_center]" />
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-brand-900/85 to-transparent px-5 pb-5 pt-16" aria-hidden>
+                <p className="text-xs font-semibold uppercase tracking-widest text-sun-400">Visitanos</p>
+                <p className="text-sm font-semibold text-white">San Lorenzo 600, San Rafael</p>
+              </div>
+            </div>
           </div>
           <div className="flotar absolute -left-6 top-10 flex items-center gap-3 rounded-2xl bg-white p-4 text-brand-900 shadow-card-lift">
             <span className="grid h-11 w-11 place-items-center rounded-xl bg-sky-100 text-sky-600"><Icono n="papeles" className="h-6 w-6" /></span>
