@@ -12,6 +12,8 @@ export type Img = { src: string; alt: string; w: number; h: number };
 export const IMG = {
   // Wikimedia Commons — "Vineyard in Mendoza, Argentina.jpg", David, CC BY 2.0
   hero: { src: "/images/hero-vinedos.webp", alt: "Viñedos de Mendoza frente a la cordillera de los Andes", w: 2000, h: 1239 },
+  // Foto propia: frente del local de Bertona Seguros (fondo de la portada)
+  fachada: { src: "/images/fachada.jpg", alt: "Frente del local de Organización Bertona Seguros Generales, junto a Meridional Seguros", w: 1280, h: 720 },
   // Wikimedia Commons — "Cañon del Atuel - panoramio.jpg", Elvis Boaventura, CC BY 3.0
   atuel: { src: "/images/atuel.webp", alt: "Río Atuel y sus paredes de roca en el Cañón del Atuel, San Rafael", w: 1200, h: 900 },
   // Wikimedia Commons — "Embalse Valle Grande- San Rafael - Mendoza 2023.jpg", Poxirambo, CC BY-SA 4.0

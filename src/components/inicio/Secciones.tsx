@@ -18,8 +18,8 @@ const empresas = RAMOS.filter((r) => r.grupo === "empresas");
 export function Portada() {
   return (
     <section className="relative isolate overflow-hidden bg-brand-900 pt-[72px] text-white lg:pt-[108px]">
-      <Image src={IMG.hero.src} alt={IMG.hero.alt} fill priority sizes="100vw" className="-z-20 object-cover object-[70%_center]" />
-      <div className="absolute inset-0 -z-10 bg-gradient-to-r from-brand-900 via-brand-900/85 to-sky-700/30 max-lg:bg-brand-900/75" aria-hidden />
+      <Image src={IMG.fachada.src} alt={IMG.fachada.alt} fill priority sizes="100vw" className="-z-20 object-cover object-[62%_center]" />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-r from-brand-900/90 via-brand-900/50 to-brand-900/10 max-lg:bg-gradient-to-b max-lg:from-brand-900/80 max-lg:via-brand-900/55 max-lg:to-brand-900/70" aria-hidden />
       <div className="absolute -left-32 bottom-0 -z-10 h-96 w-96 rounded-full bg-sky-500/25 blur-3xl" aria-hidden />
 
       <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 pb-44 pt-14 sm:px-6 sm:pt-20 lg:grid-cols-[1.15fr_0.85fr] lg:pb-48 lg:pt-24">
