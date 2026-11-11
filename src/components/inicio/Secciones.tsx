@@ -18,7 +18,7 @@ const empresas = RAMOS.filter((r) => r.grupo === "empresas");
 export function Portada() {
   return (
     <section className="relative isolate overflow-hidden bg-brand-900 pt-[72px] text-white lg:pt-[108px]">
-      <Image src={IMG.fachada.src} alt={IMG.fachada.alt} fill priority sizes="100vw" className="-z-20 object-cover object-[62%_center]" />
+      <Image src={IMG.fachada.src} alt={IMG.fachada.alt} fill priority sizes="100vw" className="-z-20 object-cover object-[62%_center] lg:scale-105 lg:blur-[3px]" />
       <div className="absolute inset-0 -z-10 bg-gradient-to-r from-brand-900/90 via-brand-900/50 to-brand-900/10 max-lg:bg-gradient-to-b max-lg:from-brand-900/80 max-lg:via-brand-900/55 max-lg:to-brand-900/70" aria-hidden />
       <div className="absolute -left-32 bottom-0 -z-10 h-96 w-96 rounded-full bg-sky-500/25 blur-3xl" aria-hidden />
 
@@ -48,7 +48,7 @@ export function Portada() {
 
         <div className="relative hidden lg:block">
           <div className="relative ml-auto aspect-[4/5] w-full max-w-md overflow-hidden rounded-[2rem] border-4 border-white/20 shadow-card-lift">
-            <Image src={IMG.nosotros.src} alt={IMG.nosotros.alt} fill sizes="440px" className="object-cover" />
+            <Image src={IMG.fachada.src} alt={IMG.fachada.alt} fill sizes="440px" className="object-cover object-[56%_center]" />
           </div>
           <div className="flotar absolute -left-6 top-10 flex items-center gap-3 rounded-2xl bg-white p-4 text-brand-900 shadow-card-lift">
             <span className="grid h-11 w-11 place-items-center rounded-xl bg-sky-100 text-sky-600"><Icono n="papeles" className="h-6 w-6" /></span>
