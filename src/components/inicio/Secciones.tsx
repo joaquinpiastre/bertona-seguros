@@ -50,7 +50,7 @@ export function Portada() {
           <div className="relative ml-auto w-full max-w-md">
             <div className="absolute inset-0 translate-x-4 translate-y-4 rounded-[2rem] border-2 border-sun-400/70" aria-hidden />
             <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border-[5px] border-white/90 shadow-card-lift">
-              <Image src={IMG.fachada.src} alt={IMG.fachada.alt} fill quality={90} sizes="440px" className="object-cover object-[56%_center]" />
+              <Image src={IMG.fachadaVertical.src} alt={IMG.fachadaVertical.alt} fill quality={90} sizes="440px" className="object-cover object-[center_58%]" />
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-brand-900/85 to-transparent px-5 pb-5 pt-16" aria-hidden>
                 <p className="text-xs font-semibold uppercase tracking-widest text-sun-400">Visitanos</p>
                 <p className="text-sm font-semibold text-white">San Lorenzo 600, San Rafael</p>
