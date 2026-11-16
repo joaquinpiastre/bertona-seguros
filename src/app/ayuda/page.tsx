@@ -105,6 +105,32 @@ export default function Ayuda() {
         <div className="mx-auto max-w-4xl px-4 sm:px-6">
           <h2 className={h2}>Cómo pagar mi cuota</h2>
           <p className="mt-3 text-lg text-ink-soft">{PAGOS.intro}</p>
+
+          {/* Video tutorial: cómo informar un pago desde la cuenta (versión computadora) */}
+          <div className="mt-8 overflow-hidden rounded-3xl border border-line bg-white shadow-card">
+            <video
+              controls
+              playsInline
+              preload="none"
+              poster="/videos/como-pagar-pc-portada.png"
+              aria-label="Video: cómo informar un pago desde tu cuenta de Bertona Seguros"
+              className="aspect-video w-full bg-brand-900"
+            >
+              <source src="/videos/como-pagar-pc.webm" type="video/webm" />
+              Tu navegador no puede reproducir el video. Seguí los pasos escritos de abajo.
+            </video>
+            <div className="p-5 sm:p-6">
+              <h3 className={h3}>Mirá cómo informar tu pago en 30 segundos</h3>
+              <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-ink-soft">
+                <li>Ingresá a tu cuenta con tu <strong>DNI</strong> y tu <strong>contraseña</strong>.</li>
+                <li>Tocá el botón <strong>PAGAR</strong>.</li>
+                <li>Elegí la cuota (o las cuotas) que querés pagar. El total y la fecha de hoy se completan solos.</li>
+                <li>Elegí <strong>Transferencia</strong> (subís el comprobante) o <strong>Efectivo</strong> (pagás en la oficina).</li>
+                <li>Tocá <strong>Enviar comprobante de pago</strong>. Tu pago queda «En revisión» hasta que lo aprobamos y se emite tu recibo.</li>
+              </ol>
+              <a href="/ingresar" className={`${btnPrimario} mt-5`}>Ingresar a mi cuenta</a>
+            </div>
+          </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {PAGOS.medios.map((m) => (
               <div key={m.titulo} className="rounded-2xl border border-line bg-white p-5 shadow-card">

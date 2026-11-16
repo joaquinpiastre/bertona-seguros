@@ -9,6 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/nosotros`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.6 },
     { url: `${base}/contacto`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.6 },
     { url: `${base}/ayuda`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
+    { url: `${base}/legales`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
     ...RAMOS.map((r) => ({ url: `${base}/seguros/${r.id}`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.7 })),
   ];
 }

@@ -66,7 +66,7 @@ export function Footer() {
             Compañía aseguradora: {MERIDIONAL.nombre} (inscripción SSN N° {MERIDIONAL.inscripcionSSN}). La Superintendencia de Seguros de la Nación es el organismo de control: www.argentina.gob.ar/ssn · Atención al asegurado: {SSN_TELEFONO}.
           </p>
           <p>Créditos de imágenes: {CREDITOS.join(" ")}</p>
-          <p>© {new Date().getFullYear()} Grupo Bertona. Todos los derechos reservados.</p>
+          <p>© {new Date().getFullYear()} Grupo Bertona. Todos los derechos reservados. · <Link href="/legales" className="underline underline-offset-4 hover:text-white">Legales y privacidad</Link></p>
         </div>
       </div>
 
