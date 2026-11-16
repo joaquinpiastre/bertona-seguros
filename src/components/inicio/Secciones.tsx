@@ -3,6 +3,7 @@ import Link from "next/link";
 import { EMPRESA, RAMOS, waLink } from "@/config/empresa";
 import { IMG } from "@/config/imagenes";
 import { MERIDIONAL } from "@/config/meridional";
+import { ComoPagar } from "../ComoPagar";
 import { Icono, type NombreIcono } from "../panel/Iconos";
 import { ArrowIcon, RAMO_ICONS, StarIcon, WhatsAppIcon } from "../Icons";
 import { btnBorde, btnPrimario, btnSol } from "../PageShell";
@@ -97,6 +98,18 @@ export function Acciones() {
             return a.ext ? <a key={a.t} href={a.href} target="_blank" rel="noopener noreferrer" className={c}>{inner}</a> : <Link key={a.t} href={a.href} className={c}>{inner}</Link>;
           })}
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* ───────── Cómo pagar la cuota (video) ───────── */
+export function ComoPagarInicio() {
+  return (
+    <section id="como-pagar" className="scroll-mt-28 px-4 pt-16 sm:px-6 sm:pt-20">
+      <div className="mx-auto max-w-7xl">
+        <SectionTitle eyebrow="Pagá tu cuota" title="Cómo pagar tu cuota, paso a paso" intro="Desde tu cuenta, en el celular o la computadora, con efectivo en la oficina o transferencia." />
+        <Reveal><ComoPagar lado /></Reveal>
       </div>
     </section>
   );

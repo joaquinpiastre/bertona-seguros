@@ -1,6 +1,6 @@
 import { Contacto } from "@/components/Contacto";
 import { Faq } from "@/components/Faq";
-import { Acciones, Atencion, Catalogo, Pasos, PortalPromo, Portada, PorQue, QuienesNosEligen, RespaldoMeridional, Zona } from "@/components/inicio/Secciones";
+import { Acciones, Atencion, ComoPagarInicio, Catalogo, Pasos, PortalPromo, Portada, PorQue, QuienesNosEligen, RespaldoMeridional, Zona } from "@/components/inicio/Secciones";
 import { PageShell } from "@/components/PageShell";
 import { Resenas } from "@/components/Resenas";
 
@@ -9,6 +9,7 @@ export default function Home() {
     <PageShell>
       <Portada />
       <Acciones />
+      <ComoPagarInicio />
       <Catalogo />
       <PorQue />
       <RespaldoMeridional />
