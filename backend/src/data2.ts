@@ -139,6 +139,10 @@ export const DATOS2: Record<string, (sp: SP) => Promise<unknown>> = {
     const u = await q1("SELECT tiene_clave, dni, activo, clave_cifrada FROM usuarios WHERE cliente_id = $1 AND rol = 'socio' LIMIT 1", [idDe(sp)]);
     // Solo el personal ve la contraseña que le entregó al cliente (si todavía no la cambió): sirve para volver a compartirla por WhatsApp.
     const acceso = u ? { tiene_clave: u.tiene_clave, dni: u.dni, activo: u.activo, clave: descifrar(u.clave_cifrada) } : null;
+    // Otros clientes cargados con el mismo DNI (cada ficha entra al portal con su propia contraseña).
+    const mismoDni = u?.dni
+      ? await q("SELECT c.id, c.nombre FROM usuarios x JOIN clientes c ON c.id = x.cliente_id WHERE x.rol = 'socio' AND x.dni = $1 AND x.cliente_id <> $2 ORDER BY c.nombre", [u.dni, idDe(sp)])
+      : [];
     // Todos los recibos del cliente (un renglón por recibo, aunque cubra varias cuotas) para elegir cuál imprimir o enviar.
     const pagos = await q(
       `SELECT MIN(pg.id) AS id, pg.recibo_nro, MIN(pg.fecha)::text AS fecha, SUM(pg.importe)::float8 AS importe, MIN(pg.metodo) AS metodo, MIN(pg.estado) AS estado,
@@ -152,7 +156,7 @@ export const DATOS2: Record<string, (sp: SP) => Promise<unknown>> = {
       "SELECT s.id, s.estado, s.tipo, s.fecha_hecho::text AS fecha, s.lugar, p.numero AS poliza FROM siniestros s LEFT JOIN polizas p ON p.id = s.poliza_id WHERE s.cliente_id = $1 ORDER BY s.id DESC LIMIT 10",
       [idDe(sp)]
     );
-    return { ...base, acceso, siniestros, pagos };
+    return { ...base, acceso, siniestros, pagos, mismoDni };
   },
 
   async siniestros(sp) {

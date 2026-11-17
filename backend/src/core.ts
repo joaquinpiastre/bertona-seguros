@@ -369,6 +369,34 @@ export async function registrarPagosCuotas(a: {
 /** Contraseña numérica de 6 dígitos para entregar al cliente. */
 export const claveNueva = () => String(100000 + (randomBytes(4).readUInt32BE(0) % 900000));
 
+/** DNI con el que se ingresa: de un CUIT (11 números) se toma el DNI del medio, igual que en el ingreso al portal. */
+const dniDeIngreso = (doc: unknown) => {
+  const d = soloDigitos(doc);
+  return d.length === 11 ? d.slice(2, 10) : d;
+};
+
+/**
+ * El mismo DNI puede estar en varios clientes y la contraseña es lo que decide a qué ficha se entra:
+ * no puede repetirse entre los clientes que comparten DNI.
+ */
+export async function claveEnUsoConDni(doc: unknown, clave: string, excluirUsuarioId = 0): Promise<boolean> {
+  const otros = await q(
+    `SELECT password_hash FROM usuarios
+     WHERE rol = 'socio' AND tiene_clave AND id <> $2
+       AND (CASE WHEN length(dni) = 11 THEN substring(dni from 3 for 8) ELSE dni END) = $1`,
+    [dniDeIngreso(doc), excluirUsuarioId]
+  );
+  for (const o of otros) if (await bcrypt.compare(clave, o.password_hash)) return true;
+  return false;
+}
+
+/** Contraseña nueva que no use ningún otro cliente con el mismo DNI. */
+export async function claveNuevaLibre(doc: unknown, excluirUsuarioId = 0) {
+  let clave = claveNueva();
+  while (await claveEnUsoConDni(doc, clave, excluirUsuarioId)) clave = claveNueva();
+  return clave;
+}
+
 /**
  * Guarda la contraseña de ingreso del cliente. Si la define la oficina (entregada = true) se guarda además cifrada, para poder volver
  * a compartírsela por WhatsApp; si la cambia el propio cliente, esa copia se borra (solo él la conoce).
@@ -386,21 +414,16 @@ export async function sincronizarUsuarioSocio(clienteId: number): Promise<{ ok: 
   if (!c) return { ok: false, motivo: "Cliente inexistente." };
   const dni = soloDigitos(c.documento);
   if (dni.length < 7) return { ok: false, motivo: "El DNI debe tener al menos 7 números." };
-  try {
-    const u = await q1("SELECT id FROM usuarios WHERE cliente_id = $1 AND rol = 'socio' ORDER BY id LIMIT 1", [clienteId]);
-    if (u) {
-      await q("UPDATE usuarios SET dni = $2, nombre = $3, activo = $4 WHERE id = $1", [u.id, dni, c.nombre, c.activo]);
-    } else {
-      const hash = await bcrypt.hash(randomBytes(24).toString("hex"), 10);
-      await q(
-        `INSERT INTO usuarios (email, nombre, password_hash, rol, cliente_id, dni, activo, debe_cambiar_password)
-         VALUES (NULL, $1, $2, 'socio', $3, $4, $5, FALSE)`,
-        [c.nombre, hash, clienteId, dni, c.activo]
-      );
-    }
-  } catch (e) {
-    if ((e as { code?: string }).code === "23505") return { ok: false, motivo: "Ese DNI ya está cargado en otro cliente." };
-    throw e;
+  const u = await q1("SELECT id FROM usuarios WHERE cliente_id = $1 AND rol = 'socio' ORDER BY id LIMIT 1", [clienteId]);
+  if (u) {
+    await q("UPDATE usuarios SET dni = $2, nombre = $3, activo = $4 WHERE id = $1", [u.id, dni, c.nombre, c.activo]);
+  } else {
+    const hash = await bcrypt.hash(randomBytes(24).toString("hex"), 10);
+    await q(
+      `INSERT INTO usuarios (email, nombre, password_hash, rol, cliente_id, dni, activo, debe_cambiar_password)
+       VALUES (NULL, $1, $2, 'socio', $3, $4, $5, FALSE)`,
+      [c.nombre, hash, clienteId, dni, c.activo]
+    );
   }
   return { ok: true };
 }

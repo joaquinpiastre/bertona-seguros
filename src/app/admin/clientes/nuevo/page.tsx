@@ -11,7 +11,7 @@ export default async function NuevoCliente({ searchParams }: { searchParams: Pro
       <Card>
         <form action={crearCliente} className="grid gap-4 sm:grid-cols-2">
           <Field label="Nombre y apellido / razón social" name="nombre" required className="sm:col-span-2" />
-          <Field label="DNI (con él ingresa el cliente)" name="documento" required hint="Solo números. Es su usuario del portal." />
+          <Field label="DNI (con él ingresa el cliente)" name="documento" required hint="Solo números. Es su usuario del portal. Puede repetirse en otro cliente: cada ficha entra con su propia contraseña." />
           <Field label="Teléfono / WhatsApp" name="telefono" type="tel" />
           <Field label="Email" name="email" type="email" />
           <Field label="Localidad" name="localidad" />

@@ -156,7 +156,9 @@ CREATE TABLE IF NOT EXISTS avisos_pago (
 ALTER TABLE usuarios ALTER COLUMN email DROP NOT NULL;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS dni TEXT;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS pin_hash TEXT;
-CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_dni ON usuarios(dni) WHERE dni IS NOT NULL;
+-- El mismo DNI puede estar en varios clientes (cada ficha entra con su propia contraseña): el índice ya no es único.
+DROP INDEX IF EXISTS ux_usuarios_dni;
+CREATE INDEX IF NOT EXISTS idx_usuarios_dni ON usuarios(dni) WHERE dni IS NOT NULL;
 ALTER TABLE clientes ADD COLUMN IF NOT EXISTS es_agencia BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE polizas ADD COLUMN IF NOT EXISTS cobertura TEXT;
 

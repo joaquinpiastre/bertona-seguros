@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { portalUsuario, requireSocio } from "../auth";
 import { leerArchivo, type Archivo } from "../archivos";
-import { bloqueoPoliza, crearAlerta, enLista, fijarClave, guardarDoc } from "../core";
+import { bloqueoPoliza, claveEnUsoConDni, crearAlerta, enLista, fijarClave, guardarDoc } from "../core";
 import { q, q1 } from "../db";
 import { ir, txt, txtONull } from "../flash";
 import { TIPOS_SINIESTRO, esFecha, fecha, hoy, money } from "../format";
@@ -54,10 +54,11 @@ export async function cambiarClave(fd: FormData) {
   const volver = "/portal/perfil";
   const actual = String(fd.get("actual") ?? "");
   const nueva = String(fd.get("nueva") ?? "");
-  const f = await q1("SELECT password_hash FROM usuarios WHERE id = $1", [u.id]);
+  const f = await q1("SELECT password_hash, dni FROM usuarios WHERE id = $1", [u.id]);
   if (!f || !(await bcrypt.compare(actual, f.password_hash))) ir(volver, "error", "La contraseña actual no es correcta.");
   if (nueva.length < 4) ir(volver, "error", "La contraseña nueva debe tener al menos 4 caracteres.");
   if (nueva !== String(fd.get("repetir") ?? "")) ir(volver, "error", "Las contraseñas nuevas no coinciden.");
+  if (await claveEnUsoConDni(f!.dni, nueva, u.id)) ir(volver, "error", "Esa contraseña no se puede usar. Elegí otra.");
   await fijarClave(u.id, nueva);
   ir(volver, "ok", "Listo: tu contraseña se cambió. Desde ahora ingresás con tu DNI y la contraseña nueva.");
 }

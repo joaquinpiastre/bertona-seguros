@@ -10,7 +10,7 @@ import { MSG_NO_ACTIVADA, contexto, firmarToken, loginBloqueado, loginFallido, l
 import { estadoPolizas, soloDigitos } from "./core";
 import { DATOS } from "./data";
 import { DATOS2 } from "./data2";
-import { q1 } from "./db";
+import { q, q1 } from "./db";
 import { constancia, documento, exportarPagos, recibo, reciboPublico } from "./files";
 import { NoEncontrado, Redirigir } from "./flash";
 
@@ -58,25 +58,32 @@ app.post("/auth/login-dni", async (c) => {
   if (loginBloqueado(claveIp) || loginBloqueado(claveDni)) return c.json({ error: "Demasiados intentos. Probá de nuevo en unos minutos." });
   if (dni.length < 7 || dni.length > 11) return c.json({ error: "Ingresá tu DNI, solo números." });
   if (!clave) return c.json({ error: "Ingresá tu contraseña." });
-  const u = await q1(
+  // El mismo DNI puede estar en varios clientes: cada ficha tiene su propia contraseña y es la que decide a cuál se entra.
+  const candidatos = await q(
     `SELECT u.id, u.password_hash, u.tiene_clave, u.cliente_id FROM usuarios u JOIN clientes c ON c.id = u.cliente_id
-     WHERE u.rol = 'socio' AND u.activo AND c.activo AND (u.dni = $1 OR (length(u.dni) = 11 AND substring(u.dni from 3 for 8) = $1)) LIMIT 1`,
+     WHERE u.rol = 'socio' AND u.activo AND c.activo AND (u.dni = $1 OR (length(u.dni) = 11 AND substring(u.dni from 3 for 8) = $1)) ORDER BY u.id`,
     [dni]
   );
-  if (!u) {
+  if (!candidatos.length) {
     loginFallido(claveIp);
     return c.json({ error: "No encontramos un cliente con ese DNI.", noEncontrado: true });
   }
-  if (!u.tiene_clave) return c.json({ error: "Tu cuenta todavía no tiene contraseña. Pedísela a la oficina por WhatsApp o teléfono." });
-  if (!(await bcrypt.compare(clave, u.password_hash))) {
+  const conClave = candidatos.filter((x) => x.tiene_clave);
+  if (!conClave.length) return c.json({ error: "Tu cuenta todavía no tiene contraseña. Pedísela a la oficina por WhatsApp o teléfono." });
+  const coinciden = [];
+  for (const x of conClave) if (await bcrypt.compare(clave, x.password_hash)) coinciden.push(x);
+  if (!coinciden.length) {
     loginFallido(claveDni);
     loginFallido(claveIp);
     return c.json({ error: "El DNI o la contraseña no son correctos." });
   }
-  const { todas, activas } = await estadoPolizas(u.cliente_id);
-  if (todas.length <= 1 && activas.length === 0) return c.json({ error: MSG_NO_ACTIVADA });
-  loginOk(claveDni);
-  return c.json({ token: await firmarToken(u.id), rol: "socio" });
+  for (const u of coinciden) {
+    const { todas, activas } = await estadoPolizas(u.cliente_id);
+    if (todas.length <= 1 && activas.length === 0) continue;
+    loginOk(claveDni);
+    return c.json({ token: await firmarToken(u.id), rol: "socio" });
+  }
+  return c.json({ error: MSG_NO_ACTIVADA });
 });
 
 app.get("/me", async (c) => {

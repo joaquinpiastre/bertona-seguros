@@ -13,8 +13,8 @@ export default async function DetalleCliente({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
   const cid = Number(id);
-  const { c, acceso, contactos, polizas, pagos, deuda, siniestros } = await dato<{
-    c: Row; acceso: Row | null; contactos: Row[]; polizas: Row[]; pagos: Row[]; deuda: Row; siniestros: Row[];
+  const { c, acceso, contactos, polizas, pagos, deuda, siniestros, mismoDni = [] } = await dato<{
+    c: Row; acceso: Row | null; contactos: Row[]; polizas: Row[]; pagos: Row[]; deuda: Row; siniestros: Row[]; mismoDni?: Row[];
   }>("clienteDetalle", { id: cid });
 
   const volver = `/admin/clientes/${cid}`;
@@ -73,6 +73,15 @@ export default async function DetalleCliente({ params, searchParams }: Props) {
                 <p className="border border-line bg-soft p-3 text-xs text-ink-soft">No tengo guardada la contraseña actual (el cliente la cambió o se definió antes de esta mejora). Para volver a compartirle el acceso, dale una nueva abajo: se muestra acá con el botón de WhatsApp.</p>
               ) : null}
               <p>Usuario (DNI): <strong className="text-brand-900">{acceso.dni}</strong></p>
+              {mismoDni.length > 0 && (
+                <p className="border border-line bg-soft p-3 text-xs text-ink-soft">
+                  Este DNI también está en{" "}
+                  {mismoDni.map((o, i) => (
+                    <span key={o.id}>{i > 0 && ", "}<Link href={`/admin/clientes/${o.id}`} className="font-semibold text-brand-800 hover:underline">{o.nombre}</Link></span>
+                  ))}
+                  . Cada ficha entra al portal con su propia contraseña: no puede repetirse entre ellas.
+                </p>
+              )}
               <p>{acceso.activo ? <Badge tono="verde">Acceso activo</Badge> : <Badge tono="rojo">Acceso desactivado</Badge>} {acceso.tiene_clave ? <Badge tono="azul">Tiene contraseña</Badge> : <Badge tono="ambar">Sin contraseña: todavía no puede ingresar</Badge>}</p>
               <form action={definirClaveCliente} className="space-y-3 border-t border-line pt-4">
                 <input type="hidden" name="cliente_id" value={cid} />

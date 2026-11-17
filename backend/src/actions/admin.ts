@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { requireAdmin } from "../auth";
 import { leerArchivo, type Archivo } from "../archivos";
 import { q, q1 } from "../db";
-import { claveNueva, enLista, fijarClave, guardarDoc, recalcularCuota, registrarPagosCuotas, soloDigitos, sincronizarUsuarioSocio } from "../core";
+import { claveEnUsoConDni, claveNuevaLibre, enLista, fijarClave, guardarDoc, recalcularCuota, registrarPagosCuotas, soloDigitos, sincronizarUsuarioSocio } from "../core";
 import { EMAIL_RE, Redirigir, ir, num, txt, txtONull } from "../flash";
 import { COBROS, ESTADOS_POLIZA, PERIODICIDAD, TIPOS_DOC, esFecha, hoy, sumarMeses } from "../format";
 
@@ -36,7 +36,10 @@ export async function crearCliente(fd: FormData) {
   if (!d.nombre) ir(volver, "error", "El nombre es obligatorio.");
   if (soloDigitos(d.documento).length < 7) ir(volver, "error", "El DNI es obligatorio (con él ingresa el cliente al portal).");
   if (d.email && !EMAIL_RE.test(d.email)) ir(volver, "error", "El email no es válido.");
-  if (await q1("SELECT 1 FROM usuarios WHERE dni = $1", [soloDigitos(d.documento)])) ir(volver, "error", "Ese DNI ya está cargado en otro cliente.");
+  // El DNI se puede repetir en varios clientes; lo que no se puede repetir entre ellos es la contraseña (con ella se sabe a qué ficha entra).
+  const claveDada = fd.get("clave") ? String(fd.get("clave")).trim() : "";
+  if (claveDada && (await claveEnUsoConDni(d.documento, claveDada))) ir(volver, "error", "Esa contraseña ya la usa otro cliente con el mismo DNI. Elegí otra o dejala vacía para que se genere una.");
+  const compartido = await q1("SELECT 1 FROM usuarios WHERE rol = 'socio' AND dni = $1", [soloDigitos(d.documento)]);
   const r = await q1(
     `INSERT INTO clientes (nombre, documento, email, telefono, direccion, localidad, notas, es_agencia)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
@@ -45,10 +48,13 @@ export async function crearCliente(fd: FormData) {
   const sync = await sincronizarUsuarioSocio(r!.id);
   if (!sync.ok) ir(`/admin/clientes/${r!.id}`, "error", `Cliente creado, pero no se pudo habilitar el ingreso: ${sync.motivo}`);
   const u = await q1("SELECT id FROM usuarios WHERE cliente_id = $1 AND rol = 'socio' LIMIT 1", [r!.id]);
-  const clave = fd.get("clave") ? String(fd.get("clave")).trim() : claveNueva();
+  const clave = claveDada || (await claveNuevaLibre(d.documento, u!.id));
   if (clave.length < 4) ir(`/admin/clientes/${r!.id}`, "error", "Cliente creado, pero la contraseña debe tener al menos 4 caracteres: definila desde acá.");
   await fijarClave(u!.id, clave, true);
-  throw new Redirigir(`/admin/clientes/${r!.id}?ok=${encodeURIComponent("Cliente creado. Ya puede ingresar con su DNI y la contraseña que figura abajo.")}&clave=${encodeURIComponent(clave)}`);
+  const msg = compartido
+    ? "Cliente creado. Ese DNI ya estaba en otro cliente: cada ficha entra al portal con su propia contraseña (esta ficha, con la que figura abajo)."
+    : "Cliente creado. Ya puede ingresar con su DNI y la contraseña que figura abajo.";
+  throw new Redirigir(`/admin/clientes/${r!.id}?ok=${encodeURIComponent(msg)}&clave=${encodeURIComponent(clave)}`);
 }
 
 export async function actualizarCliente(fd: FormData) {
@@ -59,7 +65,6 @@ export async function actualizarCliente(fd: FormData) {
   if (!d.nombre) ir(volver, "error", "El nombre es obligatorio.");
   if (soloDigitos(d.documento).length < 7) ir(volver, "error", "El DNI es obligatorio (con él ingresa el cliente al portal).");
   if (d.email && !EMAIL_RE.test(d.email)) ir(volver, "error", "El email no es válido.");
-  if (await q1("SELECT 1 FROM usuarios WHERE dni = $1 AND cliente_id <> $2", [soloDigitos(d.documento), id])) ir(volver, "error", "Ese DNI ya está cargado en otro cliente.");
   await q(
     `UPDATE clientes SET nombre=$2, documento=$3, email=$4, telefono=$5, direccion=$6, localidad=$7, notas=$8, es_agencia=$9 WHERE id=$1`,
     [id, d.nombre, d.documento, d.email, d.telefono, d.direccion, d.localidad, d.notas, d.es_agencia]
@@ -82,10 +87,11 @@ export async function definirClaveCliente(fd: FormData) {
   await requireAdmin();
   const cid = Number(txt(fd, "cliente_id"));
   const volver = `/admin/clientes/${cid}`;
-  const u = await q1("SELECT id FROM usuarios WHERE cliente_id = $1 AND rol = 'socio' LIMIT 1", [cid]);
+  const u = await q1("SELECT id, dni FROM usuarios WHERE cliente_id = $1 AND rol = 'socio' LIMIT 1", [cid]);
   if (!u) ir(volver, "error", "El cliente no tiene acceso habilitado: revisá que tenga DNI cargado y guardá sus datos.");
-  const clave = txt(fd, "clave") || claveNueva();
+  const clave = txt(fd, "clave") || (await claveNuevaLibre(u!.dni, u!.id));
   if (clave.length < 4) ir(volver, "error", "La contraseña debe tener al menos 4 caracteres.");
+  if (await claveEnUsoConDni(u!.dni, clave, u!.id)) ir(volver, "error", "Esa contraseña ya la usa otro cliente con el mismo DNI. Elegí otra o dejala vacía para que se genere una.");
   await fijarClave(u!.id, clave, true);
   throw new Redirigir(`${volver}?ok=${encodeURIComponent("Contraseña guardada. Pasásela al cliente.")}&clave=${encodeURIComponent(clave)}`);
 }
