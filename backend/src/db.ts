@@ -5,9 +5,15 @@
 import bcrypt from "bcryptjs";
 
 type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+/** Conexión de solo lectura que ve la base como estaba al abrirse (se usa para la copia de seguridad). */
+export type Instantanea = {
+  query: (text: string, params?: unknown[]) => Promise<Row[]>;
+  cerrar: () => Promise<void>;
+};
 type Runner = {
   query: (text: string, params?: unknown[]) => Promise<Row[]>;
   exec: (text: string) => Promise<void>;
+  instantanea: () => Promise<Instantanea>;
 };
 
 const g = globalThis as unknown as { __bz?: { runner?: Promise<Runner>; ready?: Promise<void> } };
@@ -22,6 +28,33 @@ async function crearRunner(): Promise<Runner> {
       exec: async (t) => {
         await pool.query(t);
       },
+      // Una conexión propia con una transacción REPEATABLE READ: todas las consultas ven la misma foto de la base,
+      // aunque mientras tanto se carguen pagos o clientes (así la copia no queda con referencias rotas).
+      instantanea: async () => {
+        const c = await pool.connect();
+        try {
+          await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+          await c.query("SET LOCAL datestyle TO 'ISO, YMD'");
+          await c.query("SET LOCAL timezone TO 'America/Argentina/Buenos_Aires'");
+        } catch (e) {
+          c.release(e as Error);
+          throw e;
+        }
+        let abierta = true;
+        return {
+          query: async (t, p) => (await c.query(t, p as unknown[])).rows,
+          cerrar: async () => {
+            if (!abierta) return;
+            abierta = false;
+            try {
+              await c.query("ROLLBACK");
+              c.release();
+            } catch (e) {
+              c.release(e as Error);
+            }
+          },
+        };
+      },
     };
   }
   if (process.env.NODE_ENV === "production") throw new Error("Falta DATABASE_URL en producción");
@@ -29,15 +62,19 @@ async function crearRunner(): Promise<Runner> {
   mkdirSync("./.data", { recursive: true });
   const { PGlite } = await import("@electric-sql/pglite");
   const db = new PGlite("./.data/pglite");
+  const query = async (t: string, p?: unknown[]) => (await db.query(t, p as unknown[])).rows as Row[];
   return {
-    query: async (t, p) => (await db.query(t, p as unknown[])).rows as Row[],
+    query,
     exec: async (t) => {
       await db.exec(t);
     },
+    // PGlite (solo desarrollo) tiene una única conexión: no se abre transacción para no trabar el resto del sistema.
+    instantanea: async () => ({ query, cerrar: async () => {} }),
   };
 }
 
-const SCHEMA = `
+/** Estructura de la base. Es idempotente (IF NOT EXISTS): la copia de seguridad la incluye para poder restaurar en una base vacía. */
+export const SCHEMA = `
 CREATE SEQUENCE IF NOT EXISTS recibo_seq START 1;
 
 CREATE TABLE IF NOT EXISTS clientes (
@@ -348,4 +385,9 @@ export async function q(text: string, params: unknown[] = []): Promise<Row[]> {
 
 export async function q1(text: string, params: unknown[] = []): Promise<Row | null> {
   return (await q(text, params))[0] ?? null;
+}
+
+/** Abre una conexión de solo lectura con una foto fija de la base. Hay que llamar a cerrar() al terminar. */
+export async function abrirInstantanea(): Promise<Instantanea> {
+  return (await runner()).instantanea();
 }

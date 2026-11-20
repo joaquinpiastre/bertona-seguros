@@ -37,6 +37,7 @@ const P: Record<string, ReactNode> = {
   pagos: <><rect x="2.5" y="5.5" width="19" height="13" rx="2" /><path d="M2.5 10h19M6.5 15h4" /></>,
   polizas: <><path d="M7 3.5h7l4 4V20.5H7z" /><path d="M14 3.5v4h4M9.5 12h5M9.5 15.5h5" /></>,
   inforpago: <><path d="M12 3v12M7 10l5 5 5-5" /><path d="M4 19.500h16" /></>,
+  backup: <><ellipse cx="12" cy="6.5" rx="7.5" ry="2.8" /><path d="M4.5 6.5v11c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8v-11" /><path d="M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8" /></>,
 };
 
 export type NombreIcono = keyof typeof P;

@@ -7,6 +7,7 @@ import * as admin from "./actions/admin";
 import * as gestion from "./actions/gestion";
 import * as portal from "./actions/portal";
 import { MSG_NO_ACTIVADA, contexto, firmarToken, loginBloqueado, loginFallido, loginOk, usuarioDeToken } from "./auth";
+import { backup } from "./backup";
 import { estadoPolizas, soloDigitos } from "./core";
 import { DATOS } from "./data";
 import { DATOS2 } from "./data2";
@@ -130,6 +131,7 @@ app.get("/files/recibo/:id", (c) => guard(() => recibo(Number(c.req.param("id"))
 app.get("/files/recibo-publico", (c) => guard(() => reciboPublico(c.req.query("t") ?? "")));
 app.get("/files/constancia", (c) => guard(() => constancia(new URL(c.req.url).searchParams)));
 app.get("/files/export", (c) => guard(() => exportarPagos(new URL(c.req.url).searchParams)));
+app.get("/files/backup", () => guard(() => backup()));
 
 const port = Number(process.env.PORT) || 4000;
 serve({ fetch: app.fetch, port }, () => console.log(`API Bertona escuchando en :${port}`));

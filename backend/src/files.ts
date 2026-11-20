@@ -5,8 +5,8 @@ import { METODOS, PERIODICIDAD, esFecha, fecha, hoy, sumarMeses } from "./format
 import { ADVERTENCIAS_CONSTANCIA, generarConstanciaPdf, generarReciboPdf, type ConstanciaData } from "./pdf";
 import { datosReciboGrupo, listarPagos } from "./queries";
 
-const HDR = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
-const texto = (s: string, status: number) => new Response(s, { status });
+export const HDR = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
+export const texto = (s: string, status: number) => new Response(s, { status });
 const bytes = (b: Buffer | Uint8Array) => new Uint8Array(b);
 
 export async function documento(id: number): Promise<Response> {
@@ -138,7 +138,7 @@ export async function constancia(sp: URLSearchParams): Promise<Response> {
   });
 }
 
-const celda = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+export const celda = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
 
 export async function exportarPagos(sp: URLSearchParams): Promise<Response> {
   const u = await getUsuario();

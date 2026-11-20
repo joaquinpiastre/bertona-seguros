@@ -15,6 +15,7 @@ export default async function Mas() {
     { href: "/admin/pagos", titulo: "Pagos y caja", texto: "Cobros del día y del mes, exportar a Excel", icono: "pagos" },
     { href: "/admin/configuracion", titulo: "Configuración", texto: "Auxilio mecánico, datos de transferencia y días de gracia", icono: "config" },
     { href: "/admin/equipo", titulo: "Equipo", texto: "Personas con acceso al panel", icono: "equipo" },
+    { href: "/admin/backup", titulo: "Copia de seguridad", texto: "Descargar toda la base de datos en un archivo", icono: "backup" },
   ];
   return (
     <>

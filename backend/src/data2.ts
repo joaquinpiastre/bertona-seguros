@@ -238,6 +238,18 @@ export const DATOS2: Record<string, (sp: SP) => Promise<unknown>> = {
     };
   },
 
+  async backup() {
+    await requireAdmin();
+    const { ultimo_backup } = await getConfigs(["ultimo_backup"]);
+    let ultimo: { fecha: string; por: string; tamano: string } | null = null;
+    try {
+      ultimo = ultimo_backup ? JSON.parse(ultimo_backup) : null;
+    } catch {
+      ultimo = null;
+    }
+    return { ultimo };
+  },
+
   async configuracion() {
     await requireAdmin();
     return { cfg: await getConfigs(["dias_gracia", "dias_aviso_renovacion", "dias_refacturacion", "dias_aviso_pago", "dias_entre_avisos", "auxilio_telefono", "auxilio_texto", "auxilio_planes", "mp_instrucciones"]) };
