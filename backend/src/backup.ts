@@ -12,6 +12,7 @@ import { Zip, ZipDeflate, ZipPassThrough } from "fflate";
 import { getUsuario, type Usuario } from "./auth";
 import { SCHEMA, abrirInstantanea, q, type Instantanea } from "./db";
 import { HDR, celda, texto } from "./files";
+import { SCHEMA_SORTEO } from "./sorteo/esquema";
 
 type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 type Columna = { nombre: string; binaria: boolean };
@@ -183,6 +184,8 @@ async function* generar(db: Instantanea, u: Usuario, cuando: Date, carpeta: stri
       "",
       "-- ───── 1. Estructura (la misma que crea el sistema al arrancar) ─────",
       SCHEMA.trim(),
+      "",
+      SCHEMA_SORTEO,
       "",
       "-- ───── 2. Datos ─────",
       `TRUNCATE TABLE ${tablas.map((t) => ident(t.nombre)).join(", ")} RESTART IDENTITY CASCADE;`,

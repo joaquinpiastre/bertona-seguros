@@ -37,6 +37,7 @@ const P: Record<string, ReactNode> = {
   pagos: <><rect x="2.5" y="5.5" width="19" height="13" rx="2" /><path d="M2.5 10h19M6.5 15h4" /></>,
   polizas: <><path d="M7 3.5h7l4 4V20.5H7z" /><path d="M14 3.5v4h4M9.5 12h5M9.5 15.5h5" /></>,
   inforpago: <><path d="M12 3v12M7 10l5 5 5-5" /><path d="M4 19.500h16" /></>,
+  sorteo: <><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" /><path d="M8 6H5a3 3 0 0 0 3 4.5M16 6h3a3 3 0 0 1-3 4.5" /><path d="M12 13v3.5M8.5 20h7M10 16.5h4V20h-4z" /></>,
   backup: <><ellipse cx="12" cy="6.5" rx="7.5" ry="2.8" /><path d="M4.5 6.5v11c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8v-11" /><path d="M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8" /></>,
 };
 

@@ -14,6 +14,7 @@ import { DATOS2 } from "./data2";
 import { q, q1 } from "./db";
 import { constancia, documento, exportarPagos, recibo, reciboPublico } from "./files";
 import { NoEncontrado, Redirigir } from "./flash";
+import { rutasSorteo } from "./sorteo/rutas";
 
 const ACCIONES: Record<string, (fd: FormData) => Promise<void>> = { ...admin, ...gestion, ...portal };
 const app = new Hono();
@@ -132,6 +133,9 @@ app.get("/files/recibo-publico", (c) => guard(() => reciboPublico(c.req.query("t
 app.get("/files/constancia", (c) => guard(() => constancia(new URL(c.req.url).searchParams)));
 app.get("/files/export", (c) => guard(() => exportarPagos(new URL(c.req.url).searchParams)));
 app.get("/files/backup", () => guard(() => backup()));
+
+// Sorteo Speedway (módulo aparte, con sus propias tablas): backend/src/sorteo.
+app.route("/sorteo", rutasSorteo);
 
 const port = Number(process.env.PORT) || 4000;
 serve({ fetch: app.fetch, port }, () => console.log(`API Bertona escuchando en :${port}`));

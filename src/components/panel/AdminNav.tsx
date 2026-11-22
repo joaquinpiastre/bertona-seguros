@@ -25,6 +25,7 @@ function grupos(c: Contadores): { titulo: string; items: Item[] }[] {
         { href: "/admin/polizas", label: "Pólizas", icono: "polizas" },
         { href: "/admin/siniestros", label: "Siniestros", icono: "siniestros" },
         { href: "/admin/pagos", label: "Pagos y caja", icono: "pagos" },
+        { href: "/admin/sorteo", label: "Sorteo", icono: "sorteo" },
       ],
     },
     {
@@ -74,7 +75,7 @@ export function AdminBottomBar({ contadores }: { contadores: Contadores }) {
     { href: "/admin/vencimientos", label: "Vencen", icono: "vencimientos" },
     { href: "/admin/pagos/nuevo", label: "Cobrar", icono: "cobrar" },
     { href: "/admin/clientes", label: "Clientes", icono: "clientes" },
-    { href: "/admin/mas", label: "Más", icono: "mas", badge: contadores.alertas + contadores.pagos, extra: ["/admin/comprobantes", "/admin/alertas", "/admin/polizas", "/admin/siniestros", "/admin/pagos", "/admin/configuracion", "/admin/equipo", "/admin/backup"] },
+    { href: "/admin/mas", label: "Más", icono: "mas", badge: contadores.alertas + contadores.pagos, extra: ["/admin/comprobantes", "/admin/alertas", "/admin/polizas", "/admin/siniestros", "/admin/pagos", "/admin/configuracion", "/admin/equipo", "/admin/backup", "/admin/sorteo"] },
   ];
   const activo = (i: (typeof items)[number]) => {
     if (i.href === "/admin/pagos/nuevo") return path.startsWith("/admin/pagos/nuevo");
