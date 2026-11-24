@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PolizaBloqueada, botonPagar } from "@/components/panel/Bloqueo";
 import { Icono, type NombreIcono } from "@/components/panel/Iconos";
 import { Badge, Card, Flash, btnGhost } from "@/components/panel/ui";
+import { AVISO_CLIENTES } from "@/config/avisos";
 import { EMPRESA, RECIBO_LEGAL, waLink } from "@/config/empresa";
 import { dato, type Row } from "@/lib/api";
 import { portalUsuario } from "@/lib/auth";
@@ -63,6 +64,23 @@ export default async function PortalInicio({ searchParams }: { searchParams: Pro
       ))}
 
       {urgente && proximoPago}
+
+      {AVISO_CLIENTES && (
+        <section aria-labelledby="aviso-clientes" className="mb-6 border-2 border-accent-500 border-l-8 bg-white p-5 sm:p-6">
+          <div className="flex gap-4">
+            <span className="hidden h-12 w-12 shrink-0 place-items-center bg-accent-500/15 text-accent-600 sm:grid"><Icono n="aviso" className="h-7 w-7" /></span>
+            <div>
+              <h2 id="aviso-clientes" className="text-xl text-brand-900">{AVISO_CLIENTES.titulo}</h2>
+              {AVISO_CLIENTES.parrafos.map((t) => <p key={t} className="mt-2 text-base leading-relaxed text-ink">{t}</p>)}
+              <p className="mt-2 text-base font-semibold text-brand-900">{AVISO_CLIENTES.firma}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <a href={waLink(AVISO_CLIENTES.consulta)} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center bg-[#1fa855] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#188a45]">Consultar por WhatsApp</a>
+                <a href={`tel:${EMPRESA.telefonoTel}`} className={btnGhost}>Llamar a la oficina</a>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
       {cuotas.length === 0 && polizas.length > 0 && (
         <div className="mb-6 border-l-4 border-emerald-600 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">No tenés cuotas pendientes. ¡Estás al día!</div>
       )}
